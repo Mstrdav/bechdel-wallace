@@ -4,7 +4,7 @@ Projet de visualisation autour du test de Bechdel. L'objectif est de charger les
 
 ## Structure
 
-- `data/` : données brutes (stocks). Pour l'instant, nous utilisons les données publiques de FiveThirtyEight.
+- `data/` : données brutes (stocks). On dispose aujourd’hui de deux sources : le CSV public FiveThirtyEight (importé depuis `src/import_data.py`) et le dépôt supplémentaire `bechdel_movies_2023_FEB.csv` que tu viens de fournir (10k films, colonnes `title/year/rating/dubious/imdbid`).
 - `src/` : scripts Python pour importer et préparer les données (analyse/visualisation à faire ensuite).
 
 ## Import des données
