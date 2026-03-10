@@ -16,3 +16,4 @@ Un script d'import (`src/import_data.py`) télécharge le CSV des films maintenu
 1. Construire des visualisations (dashboards, plots) sur la base du dataset importé.
 2. Ajouter la couche d’analyse : filtrage par décennie, comparaison genres, etc.
 3. Déployer le rendu (web, notebook ou dashboard).
+4. `shiny_app/app.R` fournit un squelette Shiny minimal : deux datasets disponibles, un tableau aperçu et un résumé sommaire. Tu peux lancer `shiny::runApp('shiny_app')` depuis la racine du projet pour démarrer l’interface.
