@@ -3,12 +3,25 @@ library(DT)
 library(plotly)
 library(bslib)
 library(bsicons)
+library(thematic)
 library(shinyWidgets)
 library(shinythemes)
 
+
+# Active le design automatique des graphiques
+thematic_shiny(font = "auto")
+
+# Définition du thème personnalisé
+my_theme <- bs_theme(
+  version = 5,
+  bootswatch = "minty", # Essayez "lux", "flatly", ou "darkly"
+  primary = "#2ecc71",  # Vert personnalisé pour coller à votre code
+  base_font = font_google("Inter")
+)
+
 ui <- page_navbar(
   title = "Explorateur Test Bechdel",
-  theme = bs_theme(bootswatch = "flatly"),
+  theme = my_theme,
   
   header = tags$style(HTML("
     .shiny-output-error-validation { color: #e74c3c; font-weight: bold; padding: 20px; }
