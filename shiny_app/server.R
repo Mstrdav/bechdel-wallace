@@ -5,6 +5,7 @@ library(plotly)
 library(xml2)
 library(dplyr)
 library(ggplot2)
+library(shinyWidgets) # Requis pour updatePickerInput
 
 # --- FONCTIONS UTILITAIRES ---
 decode_html <- function(text_vector) {
@@ -41,23 +42,49 @@ load_dataset <- function(path) {
   return(df)
 }
 
+# --- CHARGEMENT GLOBAL ---
+# Chargé UNE SEULE FOIS au démarrage de l'application
+global_dataset <- load_dataset("../data/raw/all_movies.csv")
+global_decades <- if(nrow(global_dataset) > 0) sort(unique(global_dataset$decade)) else character(0)
+
 function(input, output, session) {
   
+  # Initialisation du PickerInput au lancement de la session
   observe({
-    df <- load_dataset("data/raw/all_movies.csv")
-    if(nrow(df) > 0) {
-      decades <- sort(unique(df$decade))
-      updatePickerInput(session, "selected_decades", choices = decades, selected = decades)
+    if(length(global_decades) > 0) {
+      updatePickerInput(session, "selected_decades", choices = global_decades, selected = global_decades)
     }
   })
   
+  # Le dataset filtré opère désormais sur les données en RAM (très rapide)
   filtered_dataset <- reactive({
-    df <- load_dataset("../data/raw/all_movies.csv")
+    df <- global_dataset
     if (nrow(df) == 0) return(df)
-    df_filt <- df %>% filter(year >= input$year_range[1], year <= input$year_range[2], rating_val %in% as.numeric(input$ratings_filter))
-    if(!is.null(input$selected_decades)) df_filt <- df_filt %>% filter(decade %in% input$selected_decades)
-    if(input$title_search != "") df_filt <- df_filt %>% filter(grepl(input$title_search, title, ignore.case = TRUE))
+    
+    # Filtrage combiné pour plus de rapidité
+    df_filt <- df %>% filter(
+      year >= input$year_range[1], 
+      year <= input$year_range[2], 
+      rating_val %in% as.numeric(input$ratings_filter)
+    )
+    
+    if(!is.null(input$selected_decades)) {
+      df_filt <- df_filt %>% filter(decade %in% input$selected_decades)
+    }
+    
+    if(input$title_search != "") {
+      df_filt <- df_filt %>% filter(grepl(input$title_search, title, ignore.case = TRUE))
+    }
+    
     return(df_filt)
+  })
+  
+  # Logique du bouton "Réinitialiser" (qui manquait)
+  observeEvent(input$reset_filters, {
+    updatePickerInput(session, "selected_decades", selected = global_decades)
+    updateSliderInput(session, "year_range", value = c(1990, 2023))
+    updateTextInput(session, "title_search", value = "")
+    updateCheckboxGroupInput(session, "ratings_filter", selected = 0:3)
   })
   
   observeEvent(input$random_btn, {
@@ -88,7 +115,6 @@ function(input, output, session) {
       layout(xaxis = list(title = "Décennie"), yaxis = list(title = "%", range = c(0, 100)), barmode = "stack")
   })
   
-  # NOUVEAU GRAPHIQUE DE TENDANCE (Remplace le Joy Plot)
   output$trend_analysis_plot <- renderPlotly({
     df <- filtered_dataset()
     if(nrow(df) < 5) return(NULL)
@@ -96,7 +122,7 @@ function(input, output, session) {
     p <- ggplot(df, aes(x = year, y = rating_val)) +
       geom_jitter(aes(text = paste("Film:", title, "<br>Année:", year, "<br>Score:", rating_val)), 
                   alpha = 0.25, color = "#34495e", width = 0.4, height = 0.2) +
-      geom_smooth(method = "loess", color = "#2ecc71", fill = "#2ecc71", alpha = 0.2, size = 1.2) +
+      geom_smooth(method = "loess", color = "#2ecc71", fill = "#2ecc71", alpha = 0.2, linewidth = 1.2) + # Remplacé size par linewidth (norme ggplot2 récente)
       theme_minimal() +
       labs(x = "Année de sortie", y = "Score Bechdel (0 à 3)") +
       scale_y_continuous(breaks = 0:3)
@@ -105,11 +131,13 @@ function(input, output, session) {
   })
   
   output$box_total_val <- renderText({ nrow(filtered_dataset()) })
+  
   output$box_percent_val <- renderText({
     df <- filtered_dataset()
     if(nrow(df) == 0) return("0%")
     paste0(round(sum(df$rating_val == 3) / nrow(df) * 100, 1), "%")
   })
+  
   output$box_score_val <- renderText({
     df <- filtered_dataset()
     if(nrow(df) == 0) return("-")

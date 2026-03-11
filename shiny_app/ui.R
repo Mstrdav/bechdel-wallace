@@ -5,8 +5,6 @@ library(bslib)
 library(bsicons)
 library(thematic)
 library(shinyWidgets)
-library(shinythemes)
-
 
 # Active le design automatique des graphiques
 thematic_shiny(font = "auto")
@@ -14,8 +12,8 @@ thematic_shiny(font = "auto")
 # Définition du thème personnalisé
 my_theme <- bs_theme(
   version = 5,
-  bootswatch = "minty", # Essayez "lux", "flatly", ou "darkly"
-  primary = "#2ecc71",  # Vert personnalisé pour coller à votre code
+  bootswatch = "minty", 
+  primary = "#2ecc71",
   base_font = font_google("Inter")
 )
 
@@ -32,7 +30,6 @@ ui <- page_navbar(
   sidebar = sidebar(
     title = "Contrôles",
     bg = "#f8f9fa",
-    selectInput("source", "Dataset", choices = c("Bechdel 2026")),
     
     pickerInput(
       inputId = "selected_decades",
