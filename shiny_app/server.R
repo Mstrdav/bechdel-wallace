@@ -7,8 +7,6 @@ library(dplyr)
 library(ggplot2)
 
 # --- FONCTIONS UTILITAIRES ---
-movie_paths <- list("Bechdel 2026" = "/data/raw/all_movies.csv")
-
 decode_html <- function(text_vector) {
   sapply(text_vector, function(txt) {
     if (is.na(txt) || txt == "") return(txt)
@@ -45,10 +43,8 @@ load_dataset <- function(path) {
 
 function(input, output, session) {
   
-  dataset <- reactive({ load_dataset(movie_paths[[input$source]]) })
-  
   observe({
-    df <- dataset()
+    df <- load_dataset("data/raw/all_movies.csv")
     if(nrow(df) > 0) {
       decades <- sort(unique(df$decade))
       updatePickerInput(session, "selected_decades", choices = decades, selected = decades)
@@ -56,7 +52,7 @@ function(input, output, session) {
   })
   
   filtered_dataset <- reactive({
-    df <- dataset()
+    df <- load_dataset("../data/raw/all_movies.csv")
     if (nrow(df) == 0) return(df)
     df_filt <- df %>% filter(year >= input$year_range[1], year <= input$year_range[2], rating_val %in% as.numeric(input$ratings_filter))
     if(!is.null(input$selected_decades)) df_filt <- df_filt %>% filter(decade %in% input$selected_decades)
