@@ -5,82 +5,112 @@ library(plotly)
 library(xml2)
 library(dplyr)
 library(ggplot2)
+library(data.table) # Ajout pour la rapidité de filtrage
 
-# --- FONCTIONS UTILITAIRES ---
+# --- FONCTIONS UTILITAIRES (Optimisées) ---
 decode_html <- function(text_vector) {
-  sapply(text_vector, function(txt) {
+  # On ne traite que les entrées qui contiennent réellement des entités HTML
+  maybe_html <- grepl("&", text_vector)
+  text_vector[maybe_html] <- sapply(text_vector[maybe_html], function(txt) {
     if (is.na(txt) || txt == "") return(txt)
+    # Remplacement rapide pour les cas communs
     txt <- gsub("&#39;", "'", txt, fixed = TRUE)
     txt <- gsub("&quot;", "\"", txt, fixed = TRUE)
     txt <- gsub("&amp;", "&", txt, fixed = TRUE)
-    if (grepl("&", txt)) {
-      tryCatch({
-        return(xml_text(read_html(paste0("<x>", txt, "</x>"))))
-      }, error = function(e) return(txt))
-    }
-    return(txt)
+    tryCatch({
+      return(xml_text(read_html(paste0("<x>", txt, "</x>"))))
+    }, error = function(e) return(txt))
   }, USE.NAMES = FALSE)
+  return(text_vector)
 }
 
-load_dataset <- function(path) {
-  if (!file.exists(path)) return(data.frame())
-  df <- read_csv(path, show_col_types = FALSE)
-  if ("title" %in% names(df)) df$title <- decode_html(df$title)
-  if ("rating" %in% names(df)) df <- df %>% rename(rating_val = rating)
-  else if ("ratings" %in% names(df)) df <- df %>% rename(rating_val = ratings)
-  
-  if ("year" %in% names(df)) df <- df %>% mutate(decade = paste0(floor(year / 10) * 10, "s"))
-  
-  if ("imdbid" %in% names(df)) {
-    df$imdbid <- sapply(df$imdbid, function(x) {
-      num_id <- as.integer(gsub("^tt", "", as.character(x)))
-      if (is.na(num_id)) return(as.character(x))
-      sprintf("%07d", num_id)
-    })
-  }
-  return(df)
+# CHARGEMENT GLOBAL (S'exécute une seule fois au démarrage)
+# On utilise data.table::fread pour une vitesse maximale
+raw_data <- as.data.table(read_csv("../data/raw/all_movies.csv", show_col_types = FALSE))
+
+# Pré-traitement lourd fait UNE SEULE FOIS
+if ("title" %in% names(raw_data)) raw_data[, title := decode_html(title)]
+if ("rating" %in% names(raw_data)) setnames(raw_data, "rating", "rating_val")
+if ("ratings" %in% names(raw_data)) setnames(raw_data, "ratings", "rating_val")
+if ("year" %in% names(raw_data)) raw_data[, decade := paste0(floor(year / 10) * 10, "s")]
+if ("imdbid" %in% names(raw_data)) {
+  raw_data[, imdbid := sprintf("%07d", as.integer(gsub("^tt", "", as.character(imdbid))))]
 }
 
 function(input, output, session) {
   
+  # Initialisation des choix sans recharger le fichier
   observe({
-    df <- load_dataset("data/raw/all_movies.csv")
-    if(nrow(df) > 0) {
-      decades <- sort(unique(df$decade))
-      updatePickerInput(session, "selected_decades", choices = decades, selected = decades)
-    }
+    decades <- sort(unique(raw_data$decade))
+    updatePickerInput(session, "selected_decades", choices = decades, selected = decades)
   })
   
+  # Dataset filtré réactif (Travaille en mémoire sur raw_data)
   filtered_dataset <- reactive({
-    df <- load_dataset("../data/raw/all_movies.csv")
-    if (nrow(df) == 0) return(df)
-    df_filt <- df %>% filter(year >= input$year_range[1], year <= input$year_range[2], rating_val %in% as.numeric(input$ratings_filter))
-    if(!is.null(input$selected_decades)) df_filt <- df_filt %>% filter(decade %in% input$selected_decades)
-    if(input$title_search != "") df_filt <- df_filt %>% filter(grepl(input$title_search, title, ignore.case = TRUE))
+    req(input$year_range, input$ratings_filter)
+    
+    df_filt <- raw_data[year >= input$year_range[1] & year <= input$year_range[2]]
+    df_filt <- df_filt[rating_val %in% as.numeric(input$ratings_filter)]
+    
+    if(!is.null(input$selected_decades)) {
+      df_filt <- df_filt[decade %in% input$selected_decades]
+    }
     return(df_filt)
   })
   
-  observeEvent(input$random_btn, {
-    df <- filtered_dataset()
-    if(nrow(df) > 0) {
-      movie <- df[sample(1:nrow(df), 1), ]
+  # --- Recherche (Optimisée : utilise raw_data en mémoire) ---
+  observeEvent(input$search_query, {
+    query <- input$search_query
+    req(nchar(query) >= 2)
+    
+    results <- raw_data[grepl(query, title, ignore.case = TRUE)][1:5]
+    
+    if(nrow(results) > 0) {
       showModal(modalDialog(
-        title = "🎬 Film tiré au sort", size = "m", easyClose = TRUE,
-        div(style = "text-align: center;",
-            h2(movie$title, style = "color: #2c3e50;"), hr(),
-            p(strong("Année : "), movie$year),
-            p(strong("Note Bechdel : "), movie$rating_val, "/3"), br(),
-            a(href = paste0("https://www.imdb.com/title/tt", movie$imdbid), "Voir sur IMDb", target = "_blank", class = "btn btn-outline-primary")),
+        title = paste("Résultats pour :", query),
+        size = "l", easyClose = TRUE,
+        lapply(1:nrow(results), function(i) {
+          movie <- results[i, ]
+          div(class = "card movie-card p-3 mb-2 shadow-sm",
+              layout_column_wrap(
+                width = 1/2,
+                div(h4(movie$title), p(strong("Année :"), movie$year)),
+                div(class = "text-end",
+                    span(class = paste0("badge badge-", movie$rating_val), 
+                         paste("Score :", movie$rating_val, "/3")),
+                    br(), br(),
+                    a(href = paste0("https://www.imdb.com/title/tt", movie$imdbid), 
+                      "Voir sur IMDb", target = "_blank", class = "btn btn-sm btn-outline-primary"))
+              )
+          )
+        }),
         footer = modalButton("Fermer")
       ))
     }
   })
   
+  # --- Graphiques et Stats (Utilisation de data.table pour les agrégations) ---
+  output$box_total_val <- renderText({ nrow(filtered_dataset()) })
+  
+  output$box_percent_val <- renderText({
+    df <- filtered_dataset()
+    if(nrow(df) == 0) return("0%")
+    paste0(round(nrow(df[rating_val == 3]) / nrow(df) * 100, 1), "%")
+  })
+  
+  output$box_score_val <- renderText({
+    df <- filtered_dataset()
+    if(nrow(df) == 0) return("-")
+    round(mean(df$rating_val, na.rm = TRUE), 2)
+  })
+  
   output$hist_plot <- renderPlotly({
     df <- filtered_dataset()
     if(nrow(df) == 0) return(NULL)
-    hist_data <- df %>% group_by(decade, rating_val) %>% summarise(count = n(), .groups = 'drop') %>%
-      group_by(decade) %>% mutate(percentage = (count / sum(count)) * 100)
+    
+    # Agrégation ultra-rapide avec data.table
+    hist_data <- df[, .(count = .N), by = .(decade, rating_val)]
+    hist_data[, percentage := (count / sum(count)) * 100, by = decade]
     
     colors <- c('0' = '#e74c3c', '1' = '#e67e22', '2' = '#f1c40f', '3' = '#2ecc71')
     plot_ly(hist_data, x = ~decade, y = ~percentage, color = ~factor(rating_val), colors = colors, type = "bar",
@@ -88,54 +118,52 @@ function(input, output, session) {
       layout(xaxis = list(title = "Décennie"), yaxis = list(title = "%", range = c(0, 100)), barmode = "stack")
   })
   
-  # NOUVEAU GRAPHIQUE DE TENDANCE (Remplace le Joy Plot)
   output$trend_analysis_plot <- renderPlotly({
     df <- filtered_dataset()
     if(nrow(df) < 5) return(NULL)
     
-    p <- ggplot(df, aes(x = year, y = rating_val)) +
-      geom_jitter(aes(text = paste("Film:", title, "<br>Année:", year, "<br>Score:", rating_val)), 
-                  alpha = 0.25, color = "#34495e", width = 0.4, height = 0.2) +
-      geom_smooth(method = "loess", color = "#2ecc71", fill = "#2ecc71", alpha = 0.2, size = 1.2) +
-      theme_minimal() +
-      labs(x = "Année de sortie", y = "Score Bechdel (0 à 3)") +
-      scale_y_continuous(breaks = 0:3)
+    # Échantillonnage si trop de données pour ggplotly (optionnel mais recommandé)
+    plot_df <- if(nrow(df) > 2000) df[sample(.N, 2000)] else df
     
-    ggplotly(p, tooltip = "text") %>% config(displayModeBar = FALSE)
-  })
-  
-  output$box_total_val <- renderText({ nrow(filtered_dataset()) })
-  output$box_percent_val <- renderText({
-    df <- filtered_dataset()
-    if(nrow(df) == 0) return("0%")
-    paste0(round(sum(df$rating_val == 3) / nrow(df) * 100, 1), "%")
-  })
-  output$box_score_val <- renderText({
-    df <- filtered_dataset()
-    if(nrow(df) == 0) return("-")
-    round(mean(df$rating_val, na.rm = TRUE), 2)
+    p <- ggplot(plot_df, aes(x = year, y = rating_val)) +
+      geom_jitter(aes(text = paste("Film:", title, "<br>Score:", rating_val)), 
+                  alpha = 0.2, color = "#34495e", width = 0.4, height = 0.2) +
+      geom_smooth(method = "loess", color = "#2ecc71", fill = "#2ecc71", alpha = 0.2) +
+      theme_minimal() + labs(x = "Année", y = "Score")
+    
+    ggplotly(p, tooltip = "text") %>% toWebGL() # toWebGL accélère le rendu de milliers de points
   })
   
   output$trend_plot <- renderPlotly({
     df <- filtered_dataset()
     if(nrow(df) < 2) return(NULL)
-    trend_data <- df %>% group_by(year) %>% summarise(pct_pass = (sum(rating_val == 3) / n()) * 100)
+    
+    trend_data <- df[, .(pct_pass = (sum(rating_val == 3) / .N) * 100), by = year][order(year)]
+    
     plot_ly(trend_data, x = ~year, y = ~pct_pass, type = 'scatter', mode = 'lines+markers', 
-            line = list(color = '#2ecc71'), marker = list(size = 4)) %>%
-      layout(yaxis = list(title = "% Réussite", range = c(0, 105)), xaxis = list(title = "Année"))
+            line = list(color = '#2ecc71')) %>%
+      layout(yaxis = list(title = "% Réussite"), xaxis = list(title = "Année"))
   })
   
-  output$sim_gauge <- renderUI({
-    score <- if(!input$q1) 0 else if(!input$q2) 1 else if(!input$q3) 2 else 3
-    colors <- c("#e74c3c", "#e67e22", "#f1c40f", "#2ecc71")
-    div(bs_icon(if(score == 3) "check-circle-fill" else "exclamation-triangle-fill", size = "5rem", class = if(score==3) "text-success" else "text-danger"),
-        h1(paste0(score, "/3"), style = paste0("color:", colors[score+1], "; font-size: 4rem; font-weight: bold;")))
+  output$table <- renderDT({ 
+    datatable(filtered_dataset(), 
+              options = list(pageLength = 10, scrollX = TRUE, server = TRUE), # server = TRUE pour DT
+              rownames = FALSE) 
   })
   
-  output$sim_verdict <- renderText({
-    score <- if(!input$q1) 0 else if(!input$q2) 1 else if(!input$q3) 2 else 3
-    if(score == 3) paste("Félicitations, '", input$sim_title, "' réussit !") else paste("'", input$sim_title, "' échoue.")
+  observeEvent(input$random_btn, {
+    df <- filtered_dataset()
+    if(nrow(df) > 0) {
+      movie <- df[sample(.N, 1)]
+      showModal(modalDialog(
+        title = "🎬 Film tiré au sort",
+        div(style = "text-align: center;",
+            h2(movie$title), hr(),
+            p(strong("Année : "), movie$year),
+            p(strong("Note Bechdel : "), movie$rating_val, "/3"),
+            a(href = paste0("https://www.imdb.com/title/tt", movie$imdbid), "IMDb", target = "_blank", class = "btn btn-primary")),
+        easyClose = TRUE
+      ))
+    }
   })
-  
-  output$table <- renderDT({ datatable(filtered_dataset(), options = list(pageLength = 10, scrollX = TRUE), rownames = FALSE) })
 }
