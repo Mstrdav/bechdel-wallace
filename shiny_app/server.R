@@ -7,7 +7,7 @@ library(dplyr)
 library(ggplot2)
 
 # --- FONCTIONS UTILITAIRES ---
-movie_paths <- list("Bechdel 2026" = "bechdel/data/raw/all_movies.csv")
+movie_paths <- list("Bechdel 2026" = "/data/raw/all_movies.csv")
 
 decode_html <- function(text_vector) {
   sapply(text_vector, function(txt) {
