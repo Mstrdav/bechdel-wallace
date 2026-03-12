@@ -4,16 +4,12 @@ Projet de visualisation autour du test de Bechdel. L'objectif est de charger les
 
 ## Structure
 
-- `data/` : données brutes (stocks). On dispose aujourd’hui de deux sources : le CSV public FiveThirtyEight (importé depuis `src/import_data.py`) et le dépôt supplémentaire `bechdel_movies_2023_FEB.csv` que tu viens de fournir (10k films, colonnes `title/year/rating/dubious/imdbid`).
-- `src/` : scripts Python pour importer et préparer les données (analyse/visualisation à faire ensuite).
+- `data/` : données brutes (stocks). Les données viennent du site [bechdeltest.com](https://bechdeltest.com), elles ont été agrégées une première fois en 2023 quand le site proposait une API, et nous avons scrappé les nouvelles données début 2026. Les données sont ensuite fusionnées avec des données d'IMDB, ce qui donne all_movies.csv. Cette ajout a été fait à l'extérieur du repos. En clair movies.csv + last_import.csv (scraping) + imdb.csv (pas présent) = all_movies.csv.
+- `src/` : scripts Python pour importer et préparer les données (scraping, fusion).
+- `shiny_app/` : code de l’application Shiny pour visualiser les données (en R).
 
-## Import des données
+## Instructions
 
-Un script d'import (`src/import_data.py`) télécharge le CSV des films maintenu par FiveThirtyEight et le sauvegarde en local dans `data/raw/movies.csv`. Le script affiche un petit résumé (nombre de lignes, années couvertes) mais ne produit pas encore de visualisation.
-
-## Étapes suivantes
-
-1. Construire des visualisations (dashboards, plots) sur la base du dataset importé.
-2. Ajouter la couche d’analyse : filtrage par décennie, comparaison genres, etc.
-3. Déployer le rendu (web, notebook ou dashboard).
-4. `shiny_app/app.R` fournit un squelette Shiny minimal : deux datasets disponibles, un tableau aperçu et un résumé sommaire. Tu peux lancer `shiny::runApp('shiny_app')` depuis la racine du projet pour démarrer l’interface.
+1. Gardez les données que nous avons mis à votre disposition dans le dossier `data/`.
+2. Installer les packages nécessaires
+3. Lancer l’application Shiny (`shiny::runApp('shiny_app')`).
