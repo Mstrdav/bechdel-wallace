@@ -1,32 +1,39 @@
-# --- server.R ---
 function(input, output, session) {
   
   # --- 1. DATASETS REACTIFS ---
   
-  # Dataset principal
   filtered_dataset <- reactive({
-    req(input$year_range, input$ratings_filter)
-    df_filt <- raw_data[year >= input$year_range[1] & year <= input$year_range[2] & rating_val %in% as.numeric(input$ratings_filter)]
-    if(!is.null(input$selected_decades)) df_filt <- df_filt[decade %in% input$selected_decades]
+    req(input$year_range, input$imdb_range)
+    df_filt <- raw_data[year >= input$year_range[1] & year <= input$year_range[2]]
+    
+    if ("rating" %in% names(df_filt)) {
+      df_filt <- df_filt[rating >= input$imdb_range[1] & rating <= input$imdb_range[2]]
+    }
+    
     if(!is.null(input$selected_genres) && "genre" %in% names(df_filt)) {
       df_filt <- df_filt[grepl(paste(input$selected_genres, collapse = "|"), genre, ignore.case = TRUE)]
     }
     return(df_filt)
   })
   
-  # Dataset Genres (pour éviter de filtrer dans le renderPlotly)
   filtered_genres_dataset <- reactive({
     if(nrow(genres_dt) == 0) return(NULL)
-    df_filt <- genres_dt[year >= input$year_range[1] & year <= input$year_range[2] & rating_val %in% as.numeric(input$ratings_filter)]
-    if(!is.null(input$selected_decades)) df_filt <- df_filt[decade %in% input$selected_decades]
+    df_filt <- genres_dt[year >= input$year_range[1] & year <= input$year_range[2]]
+    
+    if ("rating" %in% names(df_filt)) {
+      df_filt <- df_filt[rating >= input$imdb_range[1] & rating <= input$imdb_range[2]]
+    }
     return(df_filt)
   })
   
-  # Dataset Pays
   reactive_country_data <- reactive({
     if(nrow(countries_dt) == 0) return(NULL)
-    df_filt <- countries_dt[year >= input$year_range[1] & year <= input$year_range[2] & rating_val %in% as.numeric(input$ratings_filter)]
-    if(!is.null(input$selected_decades)) df_filt <- df_filt[decade %in% input$selected_decades]
+    df_filt <- countries_dt[year >= input$year_range[1] & year <= input$year_range[2]]
+    
+    if ("rating" %in% names(df_filt)) {
+      df_filt <- df_filt[rating >= input$imdb_range[1] & rating <= input$imdb_range[2]]
+    }
+    
     if(nrow(df_filt) == 0) return(NULL)
     df_filt[, .(total = .N, pass_count = sum(rating_val == 3, na.rm = TRUE)), by = country][, pct_pass := (pass_count / total) * 100]
   })
@@ -45,36 +52,35 @@ function(input, output, session) {
   })
   
   # --- 3. GRAPHIQUES (Appels aux helpers) ---
-  
   output$hist_plot <- renderPlotly({
     df <- filtered_dataset()
     if(nrow(df) == 0) return(NULL)
     build_hist_plot(df, identical(input$dark_mode_toggle, "dark"))
-  }) |> bindCache(input$year_range, input$ratings_filter, input$selected_decades, input$selected_genres, input$dark_mode_toggle)
+  }) |> bindCache(input$year_range, input$imdb_range, input$selected_genres, input$dark_mode_toggle)
   
   output$genre_plot <- renderPlotly({
     df_filt <- filtered_genres_dataset()
     if(is.null(df_filt) || nrow(df_filt) == 0) return(NULL)
     build_genre_plot(df_filt, identical(input$dark_mode_toggle, "dark"))
-  }) |> bindCache(input$year_range, input$ratings_filter, input$selected_decades, input$dark_mode_toggle)
+  }) |> bindCache(input$year_range, input$imdb_range, input$dark_mode_toggle)
   
   output$trend_plot <- renderPlotly({
     df <- filtered_dataset()
     if(nrow(df) < 2) return(NULL)
     build_trend_plot(df, identical(input$dark_mode_toggle, "dark"))
-  }) |> bindCache(input$year_range, input$ratings_filter, input$selected_decades, input$selected_genres, input$dark_mode_toggle)
+  }) |> bindCache(input$year_range, input$imdb_range, input$selected_genres, input$dark_mode_toggle)
   
   output$map_plot <- renderPlotly({
     c_data <- reactive_country_data()
     if(is.null(c_data)) return(NULL)
     build_map_plot(c_data, identical(input$dark_mode_toggle, "dark"))
-  }) |> bindCache(input$year_range, input$ratings_filter, input$selected_decades, input$dark_mode_toggle)
+  }) |> bindCache(input$year_range, input$imdb_range, input$dark_mode_toggle)
   
   output$country_bar_plot <- renderPlotly({
     c_data <- reactive_country_data()
     if(is.null(c_data)) return(NULL)
     build_country_bar_plot(c_data, identical(input$dark_mode_toggle, "dark"))
-  }) |> bindCache(input$year_range, input$ratings_filter, input$selected_decades, input$dark_mode_toggle)
+  }) |> bindCache(input$year_range, input$imdb_range, input$dark_mode_toggle)
   
   
   # --- 4. OUTILS & ACTIONS (Appels aux modales) ---
