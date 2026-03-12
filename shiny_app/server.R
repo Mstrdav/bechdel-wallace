@@ -1,7 +1,6 @@
 function(input, output, session) {
   
   # --- 1. DATASETS REACTIFS ---
-  
   filtered_dataset <- reactive({
     req(input$year_range, input$imdb_range)
     df_filt <- raw_data[year >= input$year_range[1] & year <= input$year_range[2]]
@@ -19,23 +18,20 @@ function(input, output, session) {
   filtered_genres_dataset <- reactive({
     if(nrow(genres_dt) == 0) return(NULL)
     df_filt <- genres_dt[year >= input$year_range[1] & year <= input$year_range[2]]
-    
     if ("rating" %in% names(df_filt)) {
       df_filt <- df_filt[rating >= input$imdb_range[1] & rating <= input$imdb_range[2]]
     }
     return(df_filt)
   })
   
-  reactive_country_data <- reactive({
+  # NOUVEAU : Fournit les données brutes des pays pour le graphique 100% empilé
+  filtered_countries_dataset <- reactive({
     if(nrow(countries_dt) == 0) return(NULL)
     df_filt <- countries_dt[year >= input$year_range[1] & year <= input$year_range[2]]
-    
     if ("rating" %in% names(df_filt)) {
       df_filt <- df_filt[rating >= input$imdb_range[1] & rating <= input$imdb_range[2]]
     }
-    
-    if(nrow(df_filt) == 0) return(NULL)
-    df_filt[, .(total = .N, pass_count = sum(rating_val == 3, na.rm = TRUE)), by = country][, pct_pass := (pass_count / total) * 100]
+    return(df_filt)
   })
   
   # --- 2. VALUE BOXES ---
@@ -51,7 +47,7 @@ function(input, output, session) {
     round(mean(df$rating_val, na.rm = TRUE), 2)
   })
   
-  # --- 3. GRAPHIQUES (Appels aux helpers) ---
+  # --- 3. GRAPHIQUES ---
   output$hist_plot <- renderPlotly({
     df <- filtered_dataset()
     if(nrow(df) == 0) return(NULL)
@@ -71,19 +67,21 @@ function(input, output, session) {
   }) |> bindCache(input$year_range, input$imdb_range, input$selected_genres, input$dark_mode_toggle)
   
   output$map_plot <- renderPlotly({
-    c_data <- reactive_country_data()
-    if(is.null(c_data)) return(NULL)
+    df_filt <- filtered_countries_dataset()
+    if(is.null(df_filt) || nrow(df_filt) == 0) return(NULL)
+    # Agrégation spécifique pour la carte géographique
+    c_data <- df_filt[, .(total = .N, pass_count = sum(rating_val == 3, na.rm = TRUE)), by = country][, pct_pass := (pass_count / total) * 100]
     build_map_plot(c_data, identical(input$dark_mode_toggle, "dark"))
   }) |> bindCache(input$year_range, input$imdb_range, input$dark_mode_toggle)
   
   output$country_bar_plot <- renderPlotly({
-    c_data <- reactive_country_data()
-    if(is.null(c_data)) return(NULL)
-    build_country_bar_plot(c_data, identical(input$dark_mode_toggle, "dark"))
+    df_filt <- filtered_countries_dataset()
+    if(is.null(df_filt) || nrow(df_filt) == 0) return(NULL)
+    # On passe les données BRUTES au nouveau plot helper
+    build_country_bar_plot(df_filt, identical(input$dark_mode_toggle, "dark"))
   }) |> bindCache(input$year_range, input$imdb_range, input$dark_mode_toggle)
   
-  
-  # --- 4. OUTILS & ACTIONS (Appels aux modales) ---
+  # --- 4. OUTILS & ACTIONS ---
   search_debounced <- reactive({ input$search_query }) |> debounce(500)
   
   observeEvent(search_debounced(), {

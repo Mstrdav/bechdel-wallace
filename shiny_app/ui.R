@@ -22,16 +22,24 @@ ui <- page_navbar(
   
   header = tags$head(
     tags$style(HTML("
-      /* Ajustements pour un rendu compact et élégant */
+      /* Ajustements structurels */
       .shiny-output-error-validation { color: #e74c3c; font-weight: bold; padding: 20px; }
-      .bslib-sidebar-layout .sidebar { background-color: var(--bs-tertiary-bg) !important; color: var(--bs-body-color) !important; border-right: 1px solid var(--bs-border-color); }
+      .bslib-sidebar-layout .sidebar { background-color: var(--bs-tertiary-bg) !important; color: var(--bs-body-color) !important; border-right: 1px solid var(--bs-border-color); display: flex; flex-direction: column; }
       .sidebar-section-title { font-weight: bold; color: var(--bs-primary); text-transform: uppercase; font-size: 0.75rem; margin-top: 10px; margin-bottom: 5px; display: block; letter-spacing: 0.5px; opacity: 0.8; }
+      .navbar .shiny-input-container { margin-bottom: 0 !important; }
+      
+      /* Code Couleur du Score Bechdel & Accents */
+      .text-accent { color: var(--bs-primary); font-weight: 700; }
+      .s3 { color: #2ecc71; font-weight: bold; }
+      .s2 { color: #f1c40f; font-weight: bold; }
+      .s1 { color: #e67e22; font-weight: bold; }
+      .s0 { color: #e74c3c; font-weight: bold; }
+      
+      /* Animation et design des éléments */
       .bslib-value-box { transition: transform 0.2s ease; }
       .bslib-value-box:hover { transform: translateY(-3px); }
       .movie-card { border-left: 5px solid #2ecc71; margin-bottom: 15px; background-color: var(--bs-card-bg); }
       .badge-3 { background-color: #2ecc71; } .badge-2 { background-color: #f1c40f; } .badge-1 { background-color: #e67e22; } .badge-0 { background-color: #e74c3c; }
-      /* Corrige les marges du champ de recherche dans la navbar */
-      .navbar .shiny-input-container { margin-bottom: 0 !important; }
     "))
   ),
   
@@ -40,7 +48,6 @@ ui <- page_navbar(
     title = "Accueil",
     icon = icon("house"),
     
-    # Les Stats Boxes en haut
     layout_column_wrap(
       width = 1/3,
       value_box(title = "Films filtrés", value = textOutput("box_total_val"), showcase = bs_icon("film"), theme = "primary"),
@@ -48,21 +55,40 @@ ui <- page_navbar(
       value_box(title = "Score moyen (/3)", value = textOutput("box_score_val"), showcase = bs_icon("star-half"), theme = "info")
     ),
     
-    # Le texte explicatif
-    card(
-      card_header(strong("À propos de ce projet")),
-      card_body(
-        markdown("
-        Bienvenue dans l'**Explorateur du Test de Bechdel** !
-        
-        Ce tableau de bord interactif analyse la représentation féminine dans l'industrie cinématographique. Au-delà des données, cette application a été **entièrement optimisée techniquement** pour garantir des temps de réponse instantanés, même sur de très gros volumes de données :
-        
-        * ⚙️ **Architecture MVC** : Code modulaire découpé en fonctions utilitaires (`helpers`) pour une maintenance aisée.
-        * 🚀 **Hyper-Vélocité** : Les données ont été nettoyées en amont et sérialisées en format binaire **Parquet** (avec `{arrow}`), divisant le temps de chargement par dix.
-        * 🧠 **Moteur `{data.table}`** : Remplacement des opérations classiques par des jointures et indexations en mémoire ultra-performantes.
-        * ⚡ **Mise en cache** : Les graphiques interactifs sont mémorisés en RAM (`{cachem}`) pour éviter des calculs redondants au serveur.
-        * 🎨 **Design Réactif** : Interface propulsée par `{bslib}` gérant de manière fluide un mode sombre dynamique sur tous les graphiques Plotly.
-        ")
+    layout_column_wrap(
+      width = 1/2,
+      class = "mt-3",
+      card(
+        card_header(strong(icon("circle-info"), " Qu'est-ce que le test de Bechdel ?")),
+        card_body(
+          HTML("
+            <p>Le <strong>Test de Bechdel-Wallace</strong> est un indicateur simple visant à évaluer la représentation féminine dans les œuvres de fiction.</p>
+            <p>Pour qu'un film obtienne la note maximale (<span class='s3'>Score 3</span>), il doit valider trois critères successifs :</p>
+            <ul class='list-group list-group-flush mb-3'>
+              <li class='list-group-item bg-transparent border-0 py-1'><span class='s1'>Score 1</span> : Le film comporte au moins deux femmes nommées.</li>
+              <li class='list-group-item bg-transparent border-0 py-1'><span class='s2'>Score 2</span> : Ces deux femmes parlent ensemble.</li>
+              <li class='list-group-item bg-transparent border-0 py-1'><span class='s3'>Score 3</span> : Leur conversation porte sur <span class='text-accent'>un autre sujet qu'un personnage masculin</span>.</li>
+            </ul>
+            <p>S'il ne valide même pas le premier critère, le film obtient un <span class='s0'>Score 0</span>.</p>
+            <p class='text-muted small'><em>Attention : Réussir le test ne signifie pas qu'un film est féministe, ni qu'il est bon. Il s'agit uniquement d'une mesure de la présence active des personnages féminins.</em></p>
+          ")
+        )
+      ),
+      card(
+        card_header(strong(icon("rocket"), " À propos de cet Explorateur")),
+        card_body(
+          HTML("
+            <p>Ce tableau de bord interactif analyse la représentation féminine dans l'industrie cinématographique à partir de milliers de films.</p>
+            <p>Cette application a été <strong>entièrement optimisée techniquement</strong> pour garantir des temps de réponse instantanés :</p>
+            <ul>
+              <li>⚙️ <strong>Architecture MVC</strong> : Code modulaire découpé en fonctions utilitaires (`helpers`).</li>
+              <li>🚀 <strong>Hyper-Vélocité</strong> : Données sérialisées en format binaire <strong>Parquet</strong> (`{arrow}`).</li>
+              <li>🧠 <strong>Moteur {data.table}</strong> : Indexations et jointures en mémoire ultra-performantes.</li>
+              <li>⚡ <strong>Mise en cache</strong> : Graphiques mémorisés en RAM (`{cachem}`) pour éviter la redondance.</li>
+              <li>🎨 <strong>Design Réactif</strong> : Interface `{bslib}` gérant de manière fluide un mode sombre dynamique.</li>
+            </ul>
+          ")
+        )
       )
     )
   ),
@@ -77,7 +103,8 @@ ui <- page_navbar(
       layout_sidebar(
         sidebar = sidebar(width = 300, bg = "transparent", position = "left",
                           h5("Évolution temporelle"),
-                          p("Ce graphique illustre la proportion de films réussissant totalement le test de Bechdel (score de 3) année après année. La courbe permet d'identifier la tendance et l'impact de la prise de conscience récente de l'industrie cinématographique.")
+                          HTML("<p>Ce graphique illustre la proportion de films réussissant <span class='text-accent'>totalement le test</span> année après année.</p>
+               <p>La courbe permet d'identifier la tendance globale et l'impact de la prise de conscience récente de l'industrie cinématographique sur la parité.</p>")
         ),
         plotlyOutput("trend_plot")
       )
@@ -86,9 +113,16 @@ ui <- page_navbar(
     card(
       full_screen = TRUE,
       layout_sidebar(
-        sidebar = sidebar(width = 300, bg = "transparent", position = "left",
+        sidebar = sidebar(width = 300, bg = "transparent", position = "right",
                           h5("Répartition par décennie"),
-                          p("Nous regardons ici la proportion de chaque score (de 0 à 3) agrégée par décennie. Cela permet d'analyser à quelle étape précise les films échouent historiquement (ex: le film n'a aucune femme nommée = score 0).")
+                          HTML("<p>Nous regardons ici la proportion de chaque score agrégée par décennie.</p>
+               <p>Cela permet d'analyser à quelle étape précise les films échouent historiquement :</p>
+               <ul class='list-unstyled ms-2'>
+                <li><span class='s0'>0</span> : Aucune femme nommée</li>
+                <li><span class='s1'>1</span> : Elles sont présentes</li>
+                <li><span class='s2'>2</span> : Elles se parlent</li>
+                <li><span class='s3'>3</span> : Sujet indépendant</li>
+               </ul>")
         ),
         plotlyOutput("hist_plot")
       )
@@ -99,7 +133,9 @@ ui <- page_navbar(
       layout_sidebar(
         sidebar = sidebar(width = 300, bg = "transparent", position = "left",
                           h5("Performance par Genre"),
-                          p("Certains genres cinématographiques sont-ils de meilleurs élèves que d'autres ? Ce classement montre le taux de réussite au test selon le genre du film. Les genres contenant trop peu d'œuvres sont exclus pour préserver la pertinence statistique.")
+                          HTML("<p>Décomposition à 100% par genre cinématographique.</p>
+               <p>Les barres montrent la répartition complète des scores (du <span class='s0'>0</span> au <span class='s3'>3</span>) pour mesurer de manière granulaire quels genres sont les <span class='text-accent'>meilleurs élèves</span>.</p>
+               <p class='small text-muted'>Les genres contenant moins de 5 œuvres sont exclus pour préserver la pertinence statistique.</p>")
         ),
         plotlyOutput("genre_plot", height = "400px")
       )
@@ -114,9 +150,10 @@ ui <- page_navbar(
     card(
       full_screen = TRUE,
       layout_sidebar(
-        sidebar = sidebar(width = 300, bg = "transparent", position = "left",
-                          h5("Carte mondiale de la parité"),
-                          p("La couleur indique le taux de réussite moyen des films produits dans chaque pays. Survolez un pays pour voir son nombre exact de productions dans la base.")
+        sidebar = sidebar(width = 300, bg = "transparent", position = "right",
+                          h5("Carte mondiale"),
+                          HTML("<p>La couleur de la carte indique le <span class='text-accent'>taux de réussite moyen</span> des films produits dans chaque pays.</p>
+               <p>Survolez un pays pour voir son nombre exact de productions enregistrées dans la base.</p>")
         ),
         plotlyOutput("map_plot", height = "450px")
       )
@@ -127,7 +164,8 @@ ui <- page_navbar(
       layout_sidebar(
         sidebar = sidebar(width = 300, bg = "transparent", position = "left",
                           h5("Top 20 des producteurs"),
-                          p("Un zoom quantitatif sur les 20 pays produisant le plus de films dans notre base de données, classés par leur performance finale au test de Bechdel.")
+                          HTML("<p>Un zoom quantitatif sur les 20 pays produisant le plus de films dans notre base de données.</p>
+               <p>Comme pour les genres, les barres sont <span class='text-accent'>empilées à 100%</span> pour révéler la répartition exacte des scores au sein de chaque pays.</p>")
         ),
         plotlyOutput("country_bar_plot")
       )
@@ -141,17 +179,18 @@ ui <- page_navbar(
     card(full_screen = TRUE, DTOutput("table"))
   ),
   
-  # --- ÉLÉMENTS DE LA NAVBAR (En haut à droite) ---
+  # --- ÉLÉMENTS DE LA NAVBAR ---
   nav_spacer(), 
   nav_item(
-    div(class = "d-flex align-items-center gap-2", style = "margin-top: 4px;",
+    div(class = "d-flex align-items-center gap-1", style = "margin-top: 4px;",
         textInput("search_query", NULL, placeholder = "🔍 Chercher un titre...", width = "220px"),
-        actionButton("random_btn", "🎲", class = "btn-success rounded-circle", title = "Tirer un film au hasard"),
+        # Bouton random avec un design "ghost" (sans fond)
+        actionButton("random_btn", "🎲", class = "btn border-0 bg-transparent fs-4", title = "Tirer un film au hasard"),
         input_dark_mode(id = "dark_mode_toggle")
     )
   ),
   
-  # --- SIDEBAR COMPACTE (A gauche) ---
+  # --- SIDEBAR COMPACTE ---
   sidebar = sidebar(
     title = "Filtres globaux",
     width = 300,
@@ -165,7 +204,9 @@ ui <- page_navbar(
     span(class = "sidebar-section-title", icon("masks-theater"), " Genres"),
     pickerInput("selected_genres", NULL, choices = all_genres, selected = all_genres, multiple = TRUE, options = list(`actions-box` = TRUE, `live-search` = TRUE)),
     
-    br(),
-    downloadButton("download_data", "📥 Exporter les données", class = "btn-outline-primary w-100")
+    # Mt-auto pousse le bouton tout en bas de la sidebar
+    div(class = "mt-auto pt-3",
+        downloadButton("download_data", "📥 Exporter (CSV)", class = "btn-outline-primary w-100 fw-bold")
+    )
   )
 )
