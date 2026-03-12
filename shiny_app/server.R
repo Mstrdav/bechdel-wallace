@@ -1,15 +1,12 @@
-# --- server.R ---
-
 function(input, output, session) {
-  
-  # SUPPRIMÉ : Le bloc observe({}) qui mettait à jour les pickerInputs n'existe plus !
-  
   # Dataset réactif principal
   filtered_dataset <- reactive({
     req(input$year_range, input$ratings_filter)
     
+    # filtrage rapide grâce à data.table et indexation préalable
     df_filt <- raw_data[year >= input$year_range[1] & year <= input$year_range[2]]
     df_filt <- df_filt[rating_val %in% as.numeric(input$ratings_filter)]
+    
     
     if(!is.null(input$selected_decades)) {
       df_filt <- df_filt[decade %in% input$selected_decades]
@@ -23,7 +20,7 @@ function(input, output, session) {
     return(df_filt)
   })
   
-  # Stats Boxes
+  # Info box
   output$box_total_val <- renderText({ nrow(filtered_dataset()) })
   output$box_percent_val <- renderText({
     df <- filtered_dataset()
@@ -36,22 +33,59 @@ function(input, output, session) {
     round(mean(df$rating_val, na.rm = TRUE), 2)
   })
   
-  # Plots existants avec CACHE
+  # Graphiques
   output$hist_plot <- renderPlotly({
     df <- filtered_dataset()
     if(nrow(df) == 0) return(NULL)
+    
+    # 1. Détection du mode sombre directement via ton bouton UI
+    is_dark <- identical(input$dark_mode_toggle, "dark")
+    
+    # 2. Définition des couleurs en "dur" pour que Plotly les comprenne parfaitement
+    txt_col <- if(is_dark) "#ffffff" else "#2c3e50"
+    grid_col <- if(is_dark) "#444444" else "#e9ecef"
+    
     hist_data <- df[, .(count = .N), by = .(decade, rating_val)]
     hist_data[, percentage := (count / sum(count)) * 100, by = decade]
     hist_data[, rating_val := factor(rating_val, levels = c("3", "2", "1", "0"))]
     colors <- c('3' = '#2ecc71', '2' = '#f1c40f', '1' = '#e67e22', '0' = '#e74c3c')
+    
     plot_ly(hist_data, x = ~decade, y = ~percentage, color = ~rating_val, colors = colors, type = "bar",
-            text = ~paste0(round(percentage, 1), "%"), hoverinfo = "text+name") %>%
-      layout(xaxis = list(title = "Décennie"), yaxis = list(title = "%", range = c(0, 100)), barmode = "stack")
-  }) %>% bindCache(input$year_range, input$ratings_filter, input$selected_decades, input$selected_genres)
-  # ^ Mise en cache via les inputs qui affectent ce plot
+            text = ~paste0(round(percentage, 1), "%"), 
+            textfont = list(color = txt_col), # Texte des barres
+            hoverinfo = "text+name") |>
+      layout(
+        xaxis = list(
+          title = "Décennie", 
+          gridcolor = grid_col,
+          tickfont = list(color = txt_col),   # Années X
+          titlefont = list(color = txt_col)   # Titre X
+        ), 
+        yaxis = list(
+          title = "%", 
+          range = c(0, 100), 
+          gridcolor = grid_col,
+          tickfont = list(color = txt_col),   # Valeurs Y
+          titlefont = list(color = txt_col)   # Titre Y
+        ), 
+        barmode = "stack",
+        paper_bgcolor = "transparent",
+        plot_bgcolor = "transparent",
+        font = list(color = txt_col),         # Police globale
+        legend = list(font = list(color = txt_col)), # Légende
+        hoverlabel = list(font = list(color = txt_col)) # Infobulle
+      ) |> 
+      config(displayModeBar = FALSE) 
+    
+  }) |> bindCache(input$year_range, input$ratings_filter, input$selected_decades, input$selected_genres, input$dark_mode_toggle)
   
   output$genre_plot <- renderPlotly({
     if(nrow(genres_dt) == 0) return(NULL)
+    
+    # 1. Détection du mode sombre
+    is_dark <- identical(input$dark_mode_toggle, "dark")
+    txt_col <- if(is_dark) "#ffffff" else "#2c3e50"
+    grid_col <- if(is_dark) "#444444" else "#e9ecef"
     
     df_filt <- genres_dt[year >= input$year_range[1] & year <= input$year_range[2]]
     df_filt <- df_filt[rating_val %in% as.numeric(input$ratings_filter)]
@@ -69,20 +103,64 @@ function(input, output, session) {
     if(nrow(genre_data) == 0) return(NULL)
     
     plot_ly(genre_data, y = ~reorder(genre, pct_pass), x = ~pct_pass, type = 'bar', orientation = 'h',
-            marker = list(color = '#2ecc71'), text = ~paste0(round(pct_pass, 1), "% (n=", total, ")"), hoverinfo = "text") %>%
-      layout(xaxis = list(title = "% de réussite"), yaxis = list(title = ""), margin = list(l = 120))
-  }) %>% bindCache(input$year_range, input$ratings_filter, input$selected_decades) # Pas besoin du genre ici
+            marker = list(color = '#2ecc71'), text = ~paste0(round(pct_pass, 1), "% (n=", total, ")"), 
+            textfont = list(color = txt_col), hoverinfo = "text") |>
+      layout(
+        xaxis = list(
+          title = "% de réussite", 
+          gridcolor = grid_col,
+          tickfont = list(color = txt_col),
+          titlefont = list(color = txt_col)
+        ), 
+        yaxis = list(
+          title = "", 
+          gridcolor = grid_col,
+          tickfont = list(color = txt_col)
+        ), 
+        margin = list(l = 120),
+        paper_bgcolor = "transparent",
+        plot_bgcolor = "transparent",
+        font = list(color = txt_col),
+        hoverlabel = list(font = list(color = txt_col))
+      ) |> 
+      config(displayModeBar = FALSE)
+    
+  }) |> bindCache(input$year_range, input$ratings_filter, input$selected_decades, input$dark_mode_toggle)
   
   output$trend_plot <- renderPlotly({
     df <- filtered_dataset()
     if(nrow(df) < 2) return(NULL)
+    
+    is_dark <- identical(input$dark_mode_toggle, "dark")
+    txt_col <- if(is_dark) "#ffffff" else "#2c3e50"
+    grid_col <- if(is_dark) "#444444" else "#e9ecef"
+    
     trend_data <- df[, .(pct_pass = (sum(rating_val == 3) / .N) * 100), by = year][order(year)]
     plot_ly(trend_data, x = ~year, y = ~pct_pass, type = 'scatter', mode = 'lines+markers', 
-            line = list(color = '#2ecc71'), marker = list(size = 4)) %>%
-      layout(yaxis = list(title = "% Réussite"), xaxis = list(title = "Année"))
-  }) %>% bindCache(input$year_range, input$ratings_filter, input$selected_decades, input$selected_genres)
+            line = list(color = '#2ecc71'), marker = list(size = 4)) |>
+      layout(
+        xaxis = list(
+          title = "Année", 
+          gridcolor = grid_col,
+          tickfont = list(color = txt_col),
+          titlefont = list(color = txt_col)
+        ),
+        yaxis = list(
+          title = "% Réussite", 
+          gridcolor = grid_col,
+          tickfont = list(color = txt_col),
+          titlefont = list(color = txt_col)
+        ),
+        paper_bgcolor = "transparent",
+        plot_bgcolor = "transparent",
+        font = list(color = txt_col),
+        hoverlabel = list(font = list(color = txt_col))
+      ) |> 
+      config(displayModeBar = FALSE)
+    
+  }) |> bindCache(input$year_range, input$ratings_filter, input$selected_decades, input$selected_genres, input$dark_mode_toggle)
   
-  # Logique Pays
+  # --- LOGIQUE PAYS ---
   reactive_country_data <- reactive({
     if(nrow(countries_dt) == 0) return(NULL)
     
@@ -104,22 +182,58 @@ function(input, output, session) {
   output$map_plot <- renderPlotly({
     c_data <- reactive_country_data()
     if(is.null(c_data)) return(NULL)
-    plot_geo(c_data[total >= 3]) %>%
+    
+    is_dark <- identical(input$dark_mode_toggle, "dark")
+    txt_col <- if(is_dark) "#ffffff" else "#2c3e50"
+    
+    plot_geo(c_data[total >= 3]) |>
       add_trace(z = ~pct_pass, color = ~pct_pass, colors = "Greens", locations = ~country, locationmode = 'country names',
-                text = ~paste0(country, "<br>Films: ", total, "<br>Réussite: ", round(pct_pass,1), "%")) %>%
-      layout(geo = list(showframe = FALSE, projection = list(type = 'equirectangular')))
-  }) %>% bindCache(input$year_range, input$ratings_filter, input$selected_decades)
+                text = ~paste0(country, "<br>Films: ", total, "<br>Réussite: ", round(pct_pass,1), "%")) |>
+      layout(
+        geo = list(showframe = FALSE, projection = list(type = 'equirectangular'), bgcolor = "transparent"),
+        paper_bgcolor = "transparent",
+        plot_bgcolor = "transparent",
+        font = list(color = txt_col),
+        hoverlabel = list(font = list(color = txt_col))
+      ) |> 
+      config(displayModeBar = FALSE)
+    
+  }) |> bindCache(input$year_range, input$ratings_filter, input$selected_decades, input$dark_mode_toggle)
   
   output$country_bar_plot <- renderPlotly({
     c_data <- reactive_country_data()
     if(is.null(c_data)) return(NULL)
+    
+    is_dark <- identical(input$dark_mode_toggle, "dark")
+    txt_col <- if(is_dark) "#ffffff" else "#2c3e50"
+    grid_col <- if(is_dark) "#444444" else "#e9ecef"
+    
     top_countries <- head(c_data[order(-total)], 20)
-    plot_ly(top_countries, x = ~reorder(country, -pct_pass), y = ~pct_pass, type = 'bar', marker = list(color = '#2ecc71')) %>%
-      layout(xaxis = list(title = "Pays"), yaxis = list(title = "% de réussite"))
-  }) %>% bindCache(input$year_range, input$ratings_filter, input$selected_decades)
+    plot_ly(top_countries, x = ~reorder(country, -pct_pass), y = ~pct_pass, type = 'bar', marker = list(color = '#2ecc71')) |>
+      layout(
+        xaxis = list(
+          title = "Pays", 
+          gridcolor = grid_col,
+          tickfont = list(color = txt_col),
+          titlefont = list(color = txt_col)
+        ), 
+        yaxis = list(
+          title = "% de réussite", 
+          gridcolor = grid_col,
+          tickfont = list(color = txt_col),
+          titlefont = list(color = txt_col)
+        ),
+        paper_bgcolor = "transparent",
+        plot_bgcolor = "transparent",
+        font = list(color = txt_col),
+        hoverlabel = list(font = list(color = txt_col))
+      ) |> 
+      config(displayModeBar = FALSE)
+    
+  }) |> bindCache(input$year_range, input$ratings_filter, input$selected_decades, input$dark_mode_toggle)
   
   # Recherche de titre optimisée
-  search_debounced <- reactive({ input$search_query }) %>% debounce(500)
+  search_debounced <- reactive({ input$search_query }) |> debounce(500)
   
   observeEvent(search_debounced(), {
     query <- search_debounced()

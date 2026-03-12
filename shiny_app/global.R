@@ -4,8 +4,7 @@ library(DT)
 library(plotly)
 library(dplyr)
 library(data.table)
-library(arrow) 
-library(magrittr)
+library(arrow)
 library(cachem) # Ajout pour la gestion de la mémoire cache
 
 # 1. Chargement ultra-rapide des données Parquet
