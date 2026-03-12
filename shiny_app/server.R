@@ -2,19 +2,12 @@
 
 function(input, output, session) {
   
-  # Initialisation des filtres sidebar
-  observe({
-    updatePickerInput(session, "selected_decades", choices = all_decades, selected = all_decades)
-    if(!is.null(all_genres)) {
-      updatePickerInput(session, "selected_genres", choices = all_genres, selected = all_genres)
-    }
-  })
+  # SUPPRIMÉ : Le bloc observe({}) qui mettait à jour les pickerInputs n'existe plus !
   
   # Dataset réactif principal
   filtered_dataset <- reactive({
     req(input$year_range, input$ratings_filter)
     
-    # Grâce à `setkey` dans global.R, ce filtrage est immédiat
     df_filt <- raw_data[year >= input$year_range[1] & year <= input$year_range[2]]
     df_filt <- df_filt[rating_val %in% as.numeric(input$ratings_filter)]
     
@@ -43,7 +36,7 @@ function(input, output, session) {
     round(mean(df$rating_val, na.rm = TRUE), 2)
   })
   
-  # Plots existants
+  # Plots existants avec CACHE
   output$hist_plot <- renderPlotly({
     df <- filtered_dataset()
     if(nrow(df) == 0) return(NULL)
@@ -54,7 +47,8 @@ function(input, output, session) {
     plot_ly(hist_data, x = ~decade, y = ~percentage, color = ~rating_val, colors = colors, type = "bar",
             text = ~paste0(round(percentage, 1), "%"), hoverinfo = "text+name") %>%
       layout(xaxis = list(title = "Décennie"), yaxis = list(title = "%", range = c(0, 100)), barmode = "stack")
-  })
+  }) %>% bindCache(input$year_range, input$ratings_filter, input$selected_decades, input$selected_genres)
+  # ^ Mise en cache via les inputs qui affectent ce plot
   
   output$genre_plot <- renderPlotly({
     if(nrow(genres_dt) == 0) return(NULL)
@@ -77,7 +71,7 @@ function(input, output, session) {
     plot_ly(genre_data, y = ~reorder(genre, pct_pass), x = ~pct_pass, type = 'bar', orientation = 'h',
             marker = list(color = '#2ecc71'), text = ~paste0(round(pct_pass, 1), "% (n=", total, ")"), hoverinfo = "text") %>%
       layout(xaxis = list(title = "% de réussite"), yaxis = list(title = ""), margin = list(l = 120))
-  })
+  }) %>% bindCache(input$year_range, input$ratings_filter, input$selected_decades) # Pas besoin du genre ici
   
   output$trend_plot <- renderPlotly({
     df <- filtered_dataset()
@@ -86,9 +80,9 @@ function(input, output, session) {
     plot_ly(trend_data, x = ~year, y = ~pct_pass, type = 'scatter', mode = 'lines+markers', 
             line = list(color = '#2ecc71'), marker = list(size = 4)) %>%
       layout(yaxis = list(title = "% Réussite"), xaxis = list(title = "Année"))
-  })
+  }) %>% bindCache(input$year_range, input$ratings_filter, input$selected_decades, input$selected_genres)
   
-  # Logique Pays avec `countries_dt`
+  # Logique Pays
   reactive_country_data <- reactive({
     if(nrow(countries_dt) == 0) return(NULL)
     
@@ -114,7 +108,7 @@ function(input, output, session) {
       add_trace(z = ~pct_pass, color = ~pct_pass, colors = "Greens", locations = ~country, locationmode = 'country names',
                 text = ~paste0(country, "<br>Films: ", total, "<br>Réussite: ", round(pct_pass,1), "%")) %>%
       layout(geo = list(showframe = FALSE, projection = list(type = 'equirectangular')))
-  })
+  }) %>% bindCache(input$year_range, input$ratings_filter, input$selected_decades)
   
   output$country_bar_plot <- renderPlotly({
     c_data <- reactive_country_data()
@@ -122,7 +116,7 @@ function(input, output, session) {
     top_countries <- head(c_data[order(-total)], 20)
     plot_ly(top_countries, x = ~reorder(country, -pct_pass), y = ~pct_pass, type = 'bar', marker = list(color = '#2ecc71')) %>%
       layout(xaxis = list(title = "Pays"), yaxis = list(title = "% de réussite"))
-  })
+  }) %>% bindCache(input$year_range, input$ratings_filter, input$selected_decades)
   
   # Recherche de titre optimisée
   search_debounced <- reactive({ input$search_query }) %>% debounce(500)

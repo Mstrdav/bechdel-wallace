@@ -100,17 +100,20 @@ ui <- page_navbar(
   nav_spacer(), 
   nav_item(tags$div(style = "width: 280px; padding: 5px 15px 0 0;", textInput("search_query", NULL, placeholder = "🔍 Chercher un titre...", width = "100%"))),
   
+  # --- Extrait de ui.R (la partie sidebar) ---
   sidebar = sidebar(
     title = "Filtres & Outils",
     
     span(class = "sidebar-section-title", icon("calendar-days"), " Période"),
-    pickerInput("selected_decades", "Décennies :", choices = NULL, multiple = TRUE, options = list(`actions-box` = TRUE, `live-search` = TRUE)),
+    # NOUVEAU : On utilise directement all_decades
+    pickerInput("selected_decades", "Décennies :", choices = all_decades, selected = all_decades, multiple = TRUE, options = list(`actions-box` = TRUE, `live-search` = TRUE)),
     sliderInput("year_range", "Années :", min = 1880, max = 2026, value = c(1990, 2026), sep = ""),
     
     hr(),
     
     span(class = "sidebar-section-title", icon("masks-theater"), " Genres"),
-    pickerInput("selected_genres", "Filtrer par genre :", choices = NULL, multiple = TRUE, options = list(`actions-box` = TRUE, `live-search` = TRUE)),
+    # NOUVEAU : On utilise directement all_genres
+    pickerInput("selected_genres", "Filtrer par genre :", choices = all_genres, selected = all_genres, multiple = TRUE, options = list(`actions-box` = TRUE, `live-search` = TRUE)),
     
     hr(),
     
