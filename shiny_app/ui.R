@@ -25,7 +25,6 @@ ui <- page_navbar(
       /* Adaptations dynamiques pour le thème sombre/clair */
       .shiny-output-error-validation { color: #e74c3c; font-weight: bold; padding: 20px; }
       
-      /* La sidebar s'adapte maintenant aux couleurs du thème bslib */
       .bslib-sidebar-layout .sidebar { 
         background-color: var(--bs-tertiary-bg) !important; 
         color: var(--bs-body-color) !important;
@@ -34,7 +33,7 @@ ui <- page_navbar(
       
       .sidebar-section-title { 
         font-weight: bold; 
-        color: var(--bs-primary); /* Utilise la couleur primaire pour les titres */
+        color: var(--bs-primary); 
         text-transform: uppercase; 
         font-size: 0.75rem; 
         margin-top: 15px; 
@@ -66,9 +65,30 @@ ui <- page_navbar(
     layout_column_wrap(
       width = 1/2,
       card(full_screen = TRUE, card_header("Répartition des scores par décennie (%)"), plotlyOutput("hist_plot")),
-      card(full_screen = TRUE, card_header("Analyse de la tendance historique"), plotlyOutput("trend_analysis_plot", height = "400px"), card_footer("Rendu optimisé via WebGL."))
+      card(full_screen = TRUE, card_header("Corrélations par Genre (Taux de réussite)"), plotlyOutput("genre_plot", height = "400px"))
     ),
     card(card_header("Évolution temporelle (% de réussite annuelle)"), plotlyOutput("trend_plot"))
+  ),
+  
+  nav_panel(
+    title = "Analyse Géographique",
+    icon = icon("globe"),
+    layout_column_wrap(
+      width = 1,
+      card(
+        full_screen = TRUE, 
+        card_header("Carte mondiale de la parité (Taux de réussite par pays)"), 
+        plotlyOutput("map_plot", height = "500px")
+      )
+    ),
+    layout_column_wrap(
+      width = 1,
+      card(
+        full_screen = TRUE, 
+        card_header("Top 20 des pays les plus représentés (Performance Bechdel)"), 
+        plotlyOutput("country_bar_plot")
+      )
+    )
   ),
   
   nav_panel(
@@ -82,11 +102,15 @@ ui <- page_navbar(
   
   sidebar = sidebar(
     title = "Filtres & Outils",
-    # On retire le fond fixe 'bg = #f8f9fa' pour laisser le CSS dynamique gérer
     
     span(class = "sidebar-section-title", icon("calendar-days"), " Période"),
     pickerInput("selected_decades", "Décennies :", choices = NULL, multiple = TRUE, options = list(`actions-box` = TRUE, `live-search` = TRUE)),
     sliderInput("year_range", "Années :", min = 1880, max = 2026, value = c(1990, 2026), sep = ""),
+    
+    hr(),
+    
+    span(class = "sidebar-section-title", icon("masks-theater"), " Genres"),
+    pickerInput("selected_genres", "Filtrer par genre :", choices = NULL, multiple = TRUE, options = list(`actions-box` = TRUE, `live-search` = TRUE)),
     
     hr(),
     
