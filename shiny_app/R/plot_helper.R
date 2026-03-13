@@ -96,10 +96,10 @@ build_cert_plot <- function(df, is_dark) {
   plot_ly(cert_data, labels = ~age_group, values = ~count, type = "pie",
           marker = list(colors = ~color),
           textinfo = "label+percent",
-          hoverinfo = "label+value+percent") %>%
+          hoverinfo = "label+value+percent") |>
     layout(paper_bgcolor = "transparent", plot_bgcolor = "transparent",
            font = list(color = get_theme_cols(is_dark)$txt),
-           showlegend = TRUE) %>%
+           showlegend = TRUE) |>
     plotly::config(displayModeBar = FALSE)
 }
 
@@ -111,11 +111,11 @@ build_scores_year_plot <- function(df, is_dark) {
     imdb_moy = mean(rating, na.rm = TRUE),
     meta_moy = mean(metascore / 10, na.rm = TRUE)
   ), by = year][order(year)]
-  plot_ly(scores_data, x = ~year) %>%
+  plot_ly(scores_data, x = ~year) |>
     add_trace(y = ~imdb_moy, name = "Note IMDb", type = "scatter", mode = "lines+markers",
-              line = list(color = "#f1c40f"), marker = list(size = 4, color = "#f1c40f")) %>%
+              line = list(color = "#f1c40f"), marker = list(size = 4, color = "#f1c40f")) |>
     add_trace(y = ~meta_moy, name = "Metascore (/10)", type = "scatter", mode = "lines+markers",
-              line = list(color = "#3498db"), marker = list(size = 4, color = "#3498db")) %>%
-    style_plotly_axes(is_dark, x_title = "Année", y_title = "Score moyen") %>%
+              line = list(color = "#3498db"), marker = list(size = 4, color = "#3498db")) |>
+    style_plotly_axes(is_dark, x_title = "Année", y_title = "Score moyen") |>
     layout(legend = list(orientation = "h", y = -0.2))
 }

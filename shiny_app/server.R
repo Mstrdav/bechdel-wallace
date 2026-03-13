@@ -85,7 +85,7 @@ function(input, output, session) {
     df <- filtered_dataset()
     df <- df[rating_val == as.numeric(input$bw_filter_cert)]
     if(nrow(df) == 0) return(NULL)
-    build_cert_plot(df)
+    build_cert_plot(df, identical(input$dark_mode_toggle, "dark"))
   })
   
   ### NOUVEAU
@@ -94,7 +94,7 @@ function(input, output, session) {
     df <- filtered_dataset()
     df <- df[rating_val == as.numeric(input$bw_filter)]
     if(nrow(df) == 0) return(NULL)
-    build_scores_year_plot(df)
+    build_scores_year_plot(df, identical(input$dark_mode_toggle, "dark"))
   })
   
   # Outils
