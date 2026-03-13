@@ -79,23 +79,17 @@ function(input, output, session) {
     build_country_bar_plot(df_filt, identical(input$dark_mode_toggle, "dark"))
   }) |> bindCache(input$year_range, input$imdb_range, input$dark_mode_toggle)
 
-    ### NOUVEAU
   output$cert_plot <- renderPlotly({
-    req(input$bw_filter_cert)
     df <- filtered_dataset()
-    df <- df[rating_val == as.numeric(input$bw_filter_cert)]
     if(nrow(df) == 0) return(NULL)
     build_cert_plot(df, identical(input$dark_mode_toggle, "dark"))
-  })
+  }) |> bindCache(input$year_range, input$imdb_range, input$selected_genres, input$dark_mode_toggle)
   
-  ### NOUVEAU
-  output$plot_scores_year <- renderPlotly({
-    req(input$bw_filter)
+  output$plot_scores_boxplot <- renderPlotly({
     df <- filtered_dataset()
-    df <- df[rating_val == as.numeric(input$bw_filter)]
     if(nrow(df) == 0) return(NULL)
-    build_scores_year_plot(df, identical(input$dark_mode_toggle, "dark"))
-  })
+    build_scores_boxplot(df, identical(input$dark_mode_toggle, "dark"))
+  }) |> bindCache(input$year_range, input$imdb_range, input$selected_genres, input$dark_mode_toggle)
   
   # Outils
   search_debounced <- reactive({ input$search_query }) |> debounce(500)

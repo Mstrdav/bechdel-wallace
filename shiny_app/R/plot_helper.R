@@ -84,38 +84,44 @@ build_country_bar_plot <- function(df_filt, is_dark) {
     style_plotly_axes(is_dark, x_title = "Pays", y_title = "%", barmode = "stack")
 }
 
-### 6. NOUVEAU: Camembert classification d'âge
 build_cert_plot <- function(df, is_dark) {
-  color_map <- c("Enfants" = "#2ecc71", "Adolescents" = "#f1c40f",
-                 "Adultes" = "#e74c3c", "Non classé" = "#95a5a6")
-  all_groups <- data.table(age_group = names(color_map))
-  cert_data <- df[, .(count = .N), by = age_group]
-  cert_data <- merge(all_groups, cert_data, by = "age_group", all.x = TRUE)
-  cert_data[is.na(count), count := 0]
-  cert_data[, color := color_map[age_group]]
-  plot_ly(cert_data, labels = ~age_group, values = ~count, type = "pie",
-          marker = list(colors = ~color),
-          textinfo = "label+percent",
-          hoverinfo = "label+value+percent") |>
-    layout(paper_bgcolor = "transparent", plot_bgcolor = "transparent",
-           font = list(color = get_theme_cols(is_dark)$txt),
-           showlegend = TRUE) |>
-    plotly::config(displayModeBar = FALSE)
+  # Compter les occurrences par public cible et par score Bechdel
+  cert_data <- df[!is.na(age_group) & age_group != "", .(count = .N), by = .(age_group, rating_val)]
+  if(nrow(cert_data) == 0) return(NULL)
+  
+  # Calculer les pourcentages
+  cert_data[, percentage := (count / sum(count)) * 100, by = age_group]
+  cert_data[, rating_val := factor(rating_val, levels = c("3", "2", "1", "0"))]
+  
+  # Logique de tri : classer les barres du plus grand % de réussite (Score 3) au plus petit
+  order_ref <- cert_data[rating_val == "3", .(age_group, percentage)]
+  all_groups <- unique(cert_data[, .(age_group)])
+  all_groups <- merge(all_groups, order_ref, by = "age_group", all.x = TRUE)
+  all_groups[is.na(percentage), percentage := 0]
+  ordered_groups <- all_groups[order(-percentage)]$age_group
+  
+  cert_data[, age_group := factor(age_group, levels = ordered_groups)]
+  
+  # Tracer le graphique à barres empilées à 100%
+  plot_ly(cert_data, x = ~percentage, y = ~age_group, color = ~rating_val, 
+          colors = c('3'='#2ecc71', '2'='#f1c40f', '1'='#e67e22', '0'='#e74c3c'), 
+          type = "bar", orientation = 'h', text = ~paste0(round(percentage, 1), "%"), 
+          textfont = list(color = get_theme_cols(is_dark)$txt), hoverinfo = "text+name") |>
+    style_plotly_axes(is_dark, x_title = "% de films", y_title = "", barmode = "stack", margin = list(l = 100))
 }
 
-### 7. NOUVEAU: Courbe scores moyens IMDb & Metascore
-build_scores_year_plot <- function(df, is_dark) {
-  df <- df[!is.na(rating) | !is.na(metascore)]
+build_scores_boxplot <- function(df, is_dark) {
+  # Nettoyer les données (enlever les NA sur les notes IMDb et les scores Bechdel)
+  df <- df[!is.na(rating) & !is.na(rating_val)]
   if(nrow(df) == 0) return(NULL)
-  scores_data <- df[, .(
-    imdb_moy = mean(rating, na.rm = TRUE),
-    meta_moy = mean(metascore / 10, na.rm = TRUE)
-  ), by = year][order(year)]
-  plot_ly(scores_data, x = ~year) |>
-    add_trace(y = ~imdb_moy, name = "Note IMDb", type = "scatter", mode = "lines+markers",
-              line = list(color = "#f1c40f"), marker = list(size = 4, color = "#f1c40f")) |>
-    add_trace(y = ~meta_moy, name = "Metascore (/10)", type = "scatter", mode = "lines+markers",
-              line = list(color = "#3498db"), marker = list(size = 4, color = "#3498db")) |>
-    style_plotly_axes(is_dark, x_title = "Année", y_title = "Score moyen") |>
-    layout(legend = list(orientation = "h", y = -0.2))
+  
+  df[, rating_val_fac := factor(rating_val, levels = c("0", "1", "2", "3"))]
+  
+  # Créer la boîte à moustaches
+  plot_ly(df, x = ~rating_val_fac, y = ~rating, type = "box", 
+          color = ~rating_val_fac,
+          colors = c('0'='#e74c3c', '1'='#e67e22', '2'='#f1c40f', '3'='#2ecc71'),
+          boxpoints = "outliers", marker = list(opacity = 0.5)) |>
+    style_plotly_axes(is_dark, x_title = "Score Bechdel", y_title = "Note IMDb") |>
+    layout(showlegend = FALSE)
 }

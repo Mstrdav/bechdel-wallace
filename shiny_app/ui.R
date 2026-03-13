@@ -65,13 +65,15 @@ ui <- page_navbar(
         card_body(
           HTML("
             <p>Le <strong>Test de Bechdel-Wallace</strong> est un indicateur simple visant à évaluer la représentation féminine dans les œuvres de fiction.</p>
+            <p>Il tient son nom de la dessinatrice de BD américaine Alison Bechdel (et de son amie Liz Wallace), qui a popularisé ce test dans sa bande dessinée <i>The Rule</i> en 1985.</p>
             <p>Pour qu'un film obtienne la note maximale (<span class='s3'>Score 3</span>), il doit valider trois critères successifs :</p>
             <ul class='list-group list-group-flush mb-3'>
-              <li class='list-group-item bg-transparent border-0 py-1'><span class='s1'>Score 1</span> : Le film comporte au moins deux femmes nommées.</li>
-              <li class='list-group-item bg-transparent border-0 py-1'><span class='s2'>Score 2</span> : Ces deux femmes parlent ensemble.</li>
-              <li class='list-group-item bg-transparent border-0 py-1'><span class='s3'>Score 3</span> : Leur conversation porte sur <span class='text-accent'>un autre sujet qu'un personnage masculin</span>.</li>
+              <li class='list-group-item bg-transparent border-0 py-1'><span class='s1'>1</span> : Le film comporte au moins deux femmes nommées.</li>
+              <li class='list-group-item bg-transparent border-0 py-1'><span class='s2'>2</span> : Ces deux femmes parlent ensemble.</li>
+              <li class='list-group-item bg-transparent border-0 py-1'><span class='s3'>3</span> : Leur conversation porte sur <span class='text-accent'>un autre sujet qu'un personnage masculin</span>.</li>
             </ul>
-            <p>S'il ne valide même pas le premier critère, le film obtient un <span class='s0'>Score 0</span>.</p>
+            <p>S'il ne valide même pas le premier critère, le film obtient un score de <span class='s0'>0</span>.</p>
+            <p>Ce test est devenu un outil de référence, mais il est encore de nos jours trop souvent raté par des films modernes, y compris à gros budget. Le site <a href=\"https://bechdeltest.com\">bechdeltest.com</a> recense plus de 10 000 films renseignés bénévolement par la communauté. Notre analyse se base sur leurs données.</p>
             <p class='text-muted small'><em>Attention : Réussir le test ne signifie pas qu'un film est féministe, ni qu'il est bon. Il s'agit uniquement d'une mesure de la présence active des personnages féminins.</em></p>
           ")
         )
@@ -80,14 +82,15 @@ ui <- page_navbar(
         card_header(strong(icon("rocket"), " À propos de cet Explorateur")),
         card_body(
           HTML("
-            <p>Ce tableau de bord interactif analyse la représentation féminine dans l'industrie cinématographique à partir de milliers de films.</p>
-            <p>Cette application a été <strong>entièrement optimisée techniquement</strong> pour garantir des temps de réponse instantanés :</p>
+            <p>Nous avons conçu ce tableau de bord interactif pour visualiser les différentes dimensions de la donnée, et aider à réaliser à quel point le test de Bechdel est pertinent. Lors de la dernière décennie, c'est encore un film sur trois qui n'inclut pas de dialogue entre deux femmes.</p>
+            <p>Nous avons privilégié des <i>graphiques informatifs</i>, clairs et esthétiques, systématiquement accompagnés d'un <i>texte descriptif</i> qui fait ressortir l'analyse.</p>
+            <p>Cette application a été <strong>entièrement optimisée techniquement</strong> pour garantir des temps de réponse les plus courts possibles :</p>
             <ul>
-              <li>⚙️ <strong>Architecture MVC</strong> : Code modulaire découpé en fonctions utilitaires (`helpers`).</li>
-              <li>🚀 <strong>Hyper-Vélocité</strong> : Données sérialisées en format binaire <strong>Parquet</strong> (`{arrow}`).</li>
-              <li>🧠 <strong>Moteur {data.table}</strong> : Indexations et jointures en mémoire ultra-performantes.</li>
-              <li>⚡ <strong>Mise en cache</strong> : Graphiques mémorisés en RAM (`{cachem}`) pour éviter la redondance.</li>
-              <li>🎨 <strong>Design Réactif</strong> : Interface `{bslib}` gérant de manière fluide un mode sombre dynamique.</li>
+              <li><strong>Architecture modulaire</strong> : Code découpé en SERVER/UI et fonctions utilitaires (`helpers`).</li>
+              <li><strong>Chargement rapide</strong> : Données sérialisées en format binaire <strong>Parquet</strong> (`{arrow}` de Apache).</li>
+              <li><strong>Librairies rapides {data.table}</strong> : Indexations et jointures en mémoire ultra-performantes.</li>
+              <li><strong>Mise en cache</strong> : Graphiques mémorisés en RAM (`{cachem}`) pour éviter la redondance.</li>
+              <li><strong>Design Réactif</strong> : Interface `{bslib}` gérant de manière fluide un mode sombre dynamique.</li>
             </ul>
           ")
         )
@@ -141,6 +144,34 @@ ui <- page_navbar(
         ),
         plotlyOutput("genre_plot", height = "400px")
       )
+    ),
+    
+    # --- NOUVEAUX GRAPHIQUES ---
+    card(
+      full_screen = TRUE,
+      layout_sidebar(
+        sidebar = sidebar(width = 300, bg = "transparent", position = "right",
+                          h5("Certification & Public cible"),
+                          p("La classification cinématographique indique à quel public un film est destiné.
+                            Ce graphique en barres empilées montre la répartition des scores Bechdel selon le public visé.
+                            Une corrélation entre public cible et représentation féminine révèle les biais
+                            de l'industrie selon les audiences visées.")
+        ),
+        plotlyOutput("cert_plot", height = "400px")
+      )
+    ),
+    
+    card(
+      full_screen = TRUE,
+      layout_sidebar(
+        sidebar = sidebar(width = 300, bg = "transparent", position = "left",
+                          h5("Corrélation Note IMDb / Bechdel"),
+                          p("Ce graphique en boîte à moustaches (boxplot) illustre la distribution des notes IMDb 
+                            en fonction du score obtenu au test de Bechdel. Il permet d'observer s'il existe 
+                            une corrélation entre la note du public et la représentation féminine.")
+        ),
+        plotlyOutput("plot_scores_boxplot", height = "400px")
+      )
     )
   ),
   
@@ -173,64 +204,8 @@ ui <- page_navbar(
       )
     )
   ),
-
-  ### NOUVEAU --- PAGE 4 : ANALYSE COMPLEMENTAIRES
-  nav_panel(
-    title = "Analyses complémentaires",
-    icon = icon("scale-balanced"),
     
-    # Camembert
-    card(
-      full_screen = TRUE,
-      layout_sidebar(
-        sidebar = sidebar(width = 300, bg = "transparent", position = "right",
-                          h5("Certification & Public cible"),
-                          p("La classification cinématographique indique à quel public un film est destiné.
-                            Sélectionnez un score Bechdel pour observer si les films certifiés pour la jeunesse
-                            réussissent mieux (ou moins bien) le test que les productions réservées aux adultes.
-                            Une corrélation entre public cible et représentation féminine révèle les biais
-                            de l'industrie selon les audiences visées."),
-                          hr(),
-                          radioButtons("bw_filter_cert", "Score Bechdel :",
-                                       choiceNames = list(
-                                         tags$span(tags$b(style = "color:#e74c3c", "0"), " — Aucune femme nommée"),
-                                         tags$span(tags$b(style = "color:#e67e22", "1"), " — Elles sont présentes"),
-                                         tags$span(tags$b(style = "color:#f1c40f", "2"), " — Elles se parlent"),
-                                         tags$span(tags$b(style = "color:#2ecc71", "3"), " — Sujet indépendant")
-                                       ),
-                                       choiceValues = list(0, 1, 2, 3),
-                                       selected = 3
-                          )
-        ),
-        plotlyOutput("cert_plot", height = "400px")
-      )
-    ),
-    
-    # Courbe scores 
-    card(
-      full_screen = TRUE,
-      layout_sidebar(
-        sidebar = sidebar(width = 300, bg = "transparent", position = "left",
-                          h5("Évolution des scores critiques"),
-                          p("Ce graphique compare l'évolution annuelle de la note moyenne IMDb et du Metascore pour les films ayant validé ou non le test de Bechdel.
-          Il permet d'observer si la qualité perçue des films évolue différemment
-          selon leur résultat au test."),
-                          hr(),
-                          radioButtons("bw_filter", "Test Bechdel :",
-                                       choiceNames = list(
-                                         tags$span(tags$b(style = "color:#e74c3c", "0"), " — Non validé"),
-                                         tags$span(tags$b(style = "color:#2ecc71", "1"), " — Validé")
-                                       ),
-                                       choiceValues = list(0, 1),
-                                       selected = 1
-                          )
-        ),
-        plotlyOutput("plot_scores_year", height = "400px")
-      )
-    )
-  ),
-    
-  # --- PAGE 5 : EXPLORATEUR ---
+  # --- PAGE 4 : EXPLORATEUR ---
   nav_panel(
     title = "Explorateur", 
     icon = icon("table"), 
