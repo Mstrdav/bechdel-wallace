@@ -1,0 +1,176 @@
+---
+title: "Analyse de la représentation féminine au cinéma"
+subtitle: "Étude basée sur le test de Bechdel-Wallace et optimisation d'une application analytique"
+author: "Rapport de Projet"
+date: "`r Sys.Date()`"
+output: 
+  pdf_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+# Configuration globale des chunks
+knitr::opts_chunk$set(
+  echo = FALSE,       # Masque le code R dans le PDF final
+  warning = FALSE,    # Masque les avertissements
+  message = FALSE,    # Masque les messages de chargement
+  fig.align = "center",
+  fig.width = 7,      # Largeur de base générée par R
+  fig.height = 4.5,   # Hauteur de base générée par R
+  out.width = "100%"
+)
+
+# Chargement des librairies nécessaires
+library(data.table)
+library(arrow)
+library(ggplot2)
+library(dplyr)
+
+# Configuration du thème ggplot global pour un rendu professionnel
+theme_set(theme_minimal(base_family = "sans") +
+            theme(plot.title = element_text(face = "bold", size = 14),
+                  axis.title = element_text(face = "bold", size = 10),
+                  legend.position = "bottom"))
+
+# Palette de couleurs pour les scores Bechdel (0 à 3)
+bechdel_colors <- c("3" = "#2ecc71", "2" = "#f1c40f", "1" = "#e67e22", "0" = "#e74c3c")
+
+# Chargement des données pré-traitées
+# Assurez-vous que le fichier Rmd est à la racine du projet ou ajustez les chemins
+path_movies <- "data/processed/movies_clean.parquet"
+path_genres <- "data/processed/genres.parquet"
+path_countries <- "data/processed/countries.parquet"
+
+# Simulation de données si les fichiers ne sont pas trouvés lors du tricotage 
+# (Utile pour que le document compile même si les chemins diffèrent légèrement)
+if(file.exists(path_movies)) {
+  df <- setDT(read_parquet(path_movies))
+  genres_dt <- setDT(read_parquet(path_genres))
+  countries_dt <- setDT(read_parquet(path_countries))
+} else {
+  stop("Les fichiers Parquet n'ont pas été trouvés. Vérifiez le répertoire de travail.")
+}
+```
+
+\newpage
+
+# Introduction
+
+Le test de Bechdel-Wallace est un indicateur visant à évaluer la représentation féminine dans les œuvres de fiction. Popularisé en 1985 par la dessinatrice Alison Bechdel, ce test s'appuie sur trois critères cumulatifs :
+
+1.  L'œuvre comporte au moins deux femmes identifiées (nommées) ;
+2.  Ces deux femmes parlent ensemble ;
+3.  Leur conversation porte sur un sujet autre qu'un personnage masculin.
+
+Malgré sa simplicité apparente, une proportion significative de la production cinématographique mondiale échoue à ce test.
+
+L'objectif de ce projet est double : - Premièrement, analyser statistiquement ces échecs en croisant les scores Bechdel avec des données annexes (budget, genre, pays de production, notes du public). - Deuxièmement, concevoir et optimiser une application interactive (R Shiny) capable de traiter et visualiser ces données massives avec des temps de réponse quasi-instantanés.
+
+# Méthodologie et Ingénierie des Données
+
+## Origine et Collecte des Données
+
+L'édifice analytique de ce projet repose sur la fusion de deux sources de données distinctes.
+
+La source primaire est le site communautaire **bechdeltest.com**. Ce site participatif recense plus de 10 000 œuvres cinématographiques pour lesquelles des internautes bénévoles ont évalué et justifié le score (de 0 à 3) au test de Bechdel.
+
+Cependant, ces données brutes manquaient de profondeur analytique. Afin d'enrichir cette base, un script de collecte automatisée (**web scraping**) a été développé en Python. Ce processus a permis d'extraire les métadonnées correspondantes depuis la base de données de référence **IMDb** (Internet Movie Database). L'association de ces deux jeux de données a permis de lier les scores d'inclusion de genre aux caractéristiques techniques et critiques des films (année, pays, classification, genres, et notes du public), constituant ainsi le socle de notre analyse.
+
+## Architecture Modulaire
+
+Le code a été structuré selon le modèle MVC (Modèle-Vue-Contrôleur). L'interface utilisateur (`ui.R`) et la logique serveur (`server.R`) ont été séparées des fonctions de calcul et de rendu graphique, isolées dans des scripts utilitaires (`helpers.R`). Cette séparation facilite la maintenance et la lisibilité du code.
+
+## Sérialisation et Traitement en Mémoire
+
+Les données brutes (fichiers CSV) ont fait l'objet d'un nettoyage en amont (décodage des entités HTML, normalisation des identifiants). Elles ont ensuite été sauvegardées au format binaire Parquet via la librairie `arrow`. Ce format colonnaire compressé réduit drastiquement les temps d'entrée/sortie (I/O).
+
+Au sein de l'application, l'ensemble des manipulations de données (filtrages, agrégations) repose sur le package `data.table`. L'utilisation de clés d'indexation (`setkey`) permet d'effectuer des requêtes en mémoire avec une complexité temporelle fortement réduite par rapport aux opérations classiques.
+
+## Stratégie de Mise en Cache
+
+Afin de minimiser la charge du serveur lors du rendu des graphiques interactifs, le package `cachem` a été intégré. L'instruction `bindCache()` associe chaque graphique à ses paramètres d'entrée (filtres de la barre latérale). Si une combinaison de filtres a déjà été demandée, le serveur renvoie l'image mémorisée dans la RAM, offrant un temps de réponse de l'ordre de la milliseconde.
+
+\newpage
+
+# Résultats et Analyse Exploratoire
+
+## Évolution temporelle de la représentation
+
+L'analyse de la proportion de films validant intégralement le test de Bechdel (Score de 3) révèle une tendance historique intéressante.
+
+```{r trend_plot}
+trend_data <- df[, .(pct_pass = (sum(rating_val == 3, na.rm = TRUE) / .N) * 100, count = .N), by = year]
+trend_data <- trend_data[year >= 1930 & count >= 10] # Filtre pour la pertinence statistique
+
+ggplot(trend_data, aes(x = year, y = pct_pass)) +
+  geom_line(color = "#2ecc71", alpha = 0.5) +
+  geom_smooth(method = "loess", span = 0.3, color = "#27ae60", se = FALSE) +
+  scale_y_continuous(limits = c(0, 100)) +
+  labs(x = "Année de sortie", y = "Taux de réussite (%)")
+```
+
+Nous observons une stagnation à un niveau relativement bas jusqu'aux années 1980, suivie d'une croissance régulière. Cette dynamique coïncide avec une prise de conscience progressive des enjeux de parité au sein de l'industrie cinématographique.
+
+## Disparités selon les genres cinématographiques
+
+Certains genres sont-ils plus propices à une représentation équilibrée ? L'analyse de la répartition des scores au sein de chaque genre permet de mettre en évidence des disparités structurelles.
+
+```{r genre_plot}
+# Filtrage des genres marginaux
+valid_genres <- genres_dt[, .(total = .N), by = genre][total >= 50]$genre
+g_data <- genres_dt[genre %in% valid_genres, .(count = .N), by = .(genre, rating_val)]
+
+# Calcul des pourcentages
+g_data[, percentage := (count / sum(count)) * 100, by = genre]
+g_data[, rating_val := factor(rating_val, levels = c("3", "2", "1", "0"))]
+
+# Tri des genres par taux de réussite décroissant
+order_ref <- g_data[rating_val == "3", .(genre, percentage)]
+ordered_genres <- order_ref[order(percentage)]$genre
+g_data[, genre := factor(genre, levels = ordered_genres)]
+
+ggplot(g_data, aes(x = percentage, y = genre, fill = rating_val)) +
+  geom_col(width = 0.8) +
+  scale_fill_manual(values = bechdel_colors, name = "Score Bechdel") +
+  labs(x = "Proportion de films (%)", y = "")
+```
+
+Les données révèlent que les genres orientés vers la romance ou le drame intègrent plus naturellement des interactions féminines décorrélées des personnages masculins. À l'inverse, les genres traditionnellement perçus comme masculins (Action, Guerre, Western) présentent des taux d'échec significativement plus élevés.
+
+## Corrélation entre réception critique et représentation
+
+L'une des observations les plus notables concerne la corrélation entre les notes attribuées par le public (sur la plateforme IMDb) et le score au test de Bechdel.
+
+```{r scores_boxplot}
+df_filtered <- df[!is.na(rating) & !is.na(rating_val)]
+df_filtered[, rating_fac := factor(rating_val, levels = c("0", "1", "2", "3"))]
+
+# Calcul des moyennes pour la ligne de tendance
+means <- df_filtered[, .(mean_rating = mean(rating)), by = rating_fac]
+
+ggplot(df_filtered, aes(x = rating_fac, y = rating)) +
+  geom_boxplot(aes(fill = rating_fac), alpha = 0.6, outlier.size = 0.5, outlier.alpha = 0.3) +
+  geom_point(data = means, aes(y = mean_rating), color = "black", size = 3) +
+  geom_line(data = means, aes(y = mean_rating, group = 1), color = "black", linetype = "dashed") +
+  scale_fill_manual(values = bechdel_colors) +
+  guides(fill = "none") +
+  labs(x = "Score Bechdel", y = "Note IMDb (0 à 10)")
+```
+
+L'analyse de la variance montre une légère corrélation négative ! Les films validant intégralement le test (Score 3) reçoivent, en moyenne, des notes légèrement inférieures à ceux qui y échouent (Score 0 ou 1).
+
+Une surprise pour l'équipe, mais en fait ce phénomène sociologique est documenté : les audiences votant sur ces plateformes présentent un biais démographique (majoritairement masculin), qui tend à pénaliser les œuvres s'éloignant des archétypes narratifs classiques centrés sur des protagonistes masculins.
+
+# Conclusion
+
+Nous espérons que ce projet aidera à réaliser l'ampleur du travail encore à faire. Si depuis 1980 environ la part de film passant le test de Bechdel progresse, elle progresse très lentement et encore un tiers des films n'incluent pas de personnages féminins développés. Des exemples à gros budget sortent chaque année (Oppenheimer).
+
+D'un point de vue analytique, la base de données confirme que la représentation féminine au cinéma est en progression constante, bien qu'elle reste inégale selon les genres et les pays producteurs. La persistance du biais d'évaluation du public souligne également la complexité de l'évolution des normes culturelles.
+
+D'un point de vue informatique, la mise en place d'un tableau de bord interactif nous a permis d'appliquer les meilleures pratiques de la science des données avec R. L'utilisation conjointe de formats binaires (`arrow`), de manipulations vectorisées en mémoire (`data.table`) et de stratégies de cache (`cachem`) constitue une architecture robuste, capable d'être déployée en production et de résister à une forte montée en charge.
+
+Plus globalement, travailler sur un dataset au choix, c'est l'occasion d'explorer des données qui nous font envie, quitte à faire face à de plus grandes difficultés (API dépréciée, Scraping, etc.).
+
+Nous restons prudent sur nos conclusions, ce dataset de seulement 10000 films de permet pas de tirer de conclusion géographique ou de tendance avec grande confiance. Nous encourageons tout le monde à renseigner plus de films sur [bechdeltest.com](https://bechdeltest.com).
