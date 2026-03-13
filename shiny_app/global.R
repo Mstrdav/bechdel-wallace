@@ -21,5 +21,13 @@ if(nrow(countries_dt) > 0) setkey(countries_dt, year, decade, rating_val)
 all_genres <- if(nrow(genres_dt) > 0) sort(unique(genres_dt$genre)) else NULL
 all_decades <- sort(unique(raw_data$decade)) # plus nécessaire non ?
 
-# 4. Cache partagé global de 500 Mo
+#4. NOUVEAU ; Création age_group pour le camembert sur les certifications
+raw_data[, age_group := data.table::fcase(
+  certificate %in% c("G", "TV-G", "TV-Y", "TV-Y7", "TV-Y7-FV", "E10+", "Passed", "Approved"), "Enfants",
+  certificate %in% c("PG", "PG-13", "TV-PG", "TV-14", "GP", "M/PG", "M"), "Adolescents",
+  certificate %in% c("R", "TV-MA", "NC-17", "X", "16+", "18+"), "Adultes",
+  certificate %in% c("Not Rated", "Unrated") | is.na(certificate), "Non classé"
+)]
+
+# 5. Cache partagé global de 500 Mo
 shinyOptions(cache = cachem::cache_mem(max_size = 500 * 1024^2))

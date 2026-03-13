@@ -173,8 +173,64 @@ ui <- page_navbar(
       )
     )
   ),
-  
-  # --- PAGE 4 : EXPLORATEUR ---
+
+  ### NOUVEAU --- PAGE 4 : ANALYSE COMPLEMENTAIRES
+  nav_panel(
+    title = "Analyses complémentaires",
+    icon = icon("scale-balanced"),
+    
+    # Camembert
+    card(
+      full_screen = TRUE,
+      layout_sidebar(
+        sidebar = sidebar(width = 300, bg = "transparent", position = "right",
+                          h5("Certification & Public cible"),
+                          p("La classification cinématographique indique à quel public un film est destiné.
+                            Sélectionnez un score Bechdel pour observer si les films certifiés pour la jeunesse
+                            réussissent mieux (ou moins bien) le test que les productions réservées aux adultes.
+                            Une corrélation entre public cible et représentation féminine révèle les biais
+                            de l'industrie selon les audiences visées."),
+                          hr(),
+                          radioButtons("bw_filter_cert", "Score Bechdel :",
+                                       choiceNames = list(
+                                         tags$span(tags$b(style = "color:#e74c3c", "0"), " — Aucune femme nommée"),
+                                         tags$span(tags$b(style = "color:#e67e22", "1"), " — Elles sont présentes"),
+                                         tags$span(tags$b(style = "color:#f1c40f", "2"), " — Elles se parlent"),
+                                         tags$span(tags$b(style = "color:#2ecc71", "3"), " — Sujet indépendant")
+                                       ),
+                                       choiceValues = list(0, 1, 2, 3),
+                                       selected = 3
+                          )
+        ),
+        plotlyOutput("cert_plot", height = "400px")
+      )
+    ),
+    
+    # Courbe scores 
+    card(
+      full_screen = TRUE,
+      layout_sidebar(
+        sidebar = sidebar(width = 300, bg = "transparent", position = "left",
+                          h5("Évolution des scores critiques"),
+                          p("Ce graphique compare l'évolution annuelle de la note moyenne IMDb et du Metascore pour les films ayant validé ou non le test de Bechdel.
+          Il permet d'observer si la qualité perçue des films évolue différemment
+          selon leur résultat au test."),
+                          hr(),
+                          radioButtons("bw_filter", "Test Bechdel :",
+                                       choiceNames = list(
+                                         tags$span(tags$b(style = "color:#e74c3c", "0"), " — Non validé"),
+                                         tags$span(tags$b(style = "color:#2ecc71", "1"), " — Validé")
+                                       ),
+                                       choiceValues = list(0, 1),
+                                       selected = 1
+                          )
+        ),
+        plotlyOutput("plot_scores_year", height = "400px")
+      )
+    )
+  ),
+    
+  # --- PAGE 5 : EXPLORATEUR ---
   nav_panel(
     title = "Explorateur", 
     icon = icon("table"), 
