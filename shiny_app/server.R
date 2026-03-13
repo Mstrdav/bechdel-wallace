@@ -80,6 +80,24 @@ function(input, output, session) {
     # On passe les données BRUTES au nouveau plot helper
     build_country_bar_plot(df_filt, identical(input$dark_mode_toggle, "dark"))
   }) |> bindCache(input$year_range, input$imdb_range, input$dark_mode_toggle)
+
+    ### NOUVEAU
+  output$cert_plot <- renderPlotly({
+    req(input$bw_filter_cert)
+    df <- filtered_dataset()
+    df <- df[rating_val == as.numeric(input$bw_filter_cert)]
+    if(nrow(df) == 0) return(NULL)
+    build_cert_plot(df)
+  })
+  
+  ### NOUVEAU
+  output$plot_scores_year <- renderPlotly({
+    req(input$bw_filter)
+    df <- filtered_dataset()
+    df <- df[rating_val == as.numeric(input$bw_filter)]
+    if(nrow(df) == 0) return(NULL)
+    build_scores_year_plot(df)
+  })
   
   # --- 4. OUTILS & ACTIONS ---
   search_debounced <- reactive({ input$search_query }) |> debounce(500)
