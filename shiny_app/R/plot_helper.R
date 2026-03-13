@@ -83,3 +83,39 @@ build_country_bar_plot <- function(df_filt, is_dark) {
           textfont = list(color = get_theme_cols(is_dark)$txt), hoverinfo = "text+name") |>
     style_plotly_axes(is_dark, x_title = "Pays", y_title = "%", barmode = "stack")
 }
+
+### 6. NOUVEAU: Camembert classification d'âge
+build_cert_plot <- function(df, is_dark) {
+  color_map <- c("Enfants" = "#2ecc71", "Adolescents" = "#f1c40f",
+                 "Adultes" = "#e74c3c", "Non classé" = "#95a5a6")
+  all_groups <- data.table(age_group = names(color_map))
+  cert_data <- df[, .(count = .N), by = age_group]
+  cert_data <- merge(all_groups, cert_data, by = "age_group", all.x = TRUE)
+  cert_data[is.na(count), count := 0]
+  cert_data[, color := color_map[age_group]]
+  plot_ly(cert_data, labels = ~age_group, values = ~count, type = "pie",
+          marker = list(colors = ~color),
+          textinfo = "label+percent",
+          hoverinfo = "label+value+percent") %>%
+    layout(paper_bgcolor = "transparent", plot_bgcolor = "transparent",
+           font = list(color = get_theme_cols(is_dark)$txt),
+           showlegend = TRUE) %>%
+    plotly::config(displayModeBar = FALSE)
+}
+
+### 7. NOUVEAU: Courbe scores moyens IMDb & Metascore
+build_scores_year_plot <- function(df, is_dark) {
+  df <- df[!is.na(rating) | !is.na(metascore)]
+  if(nrow(df) == 0) return(NULL)
+  scores_data <- df[, .(
+    imdb_moy = mean(rating, na.rm = TRUE),
+    meta_moy = mean(metascore / 10, na.rm = TRUE)
+  ), by = year][order(year)]
+  plot_ly(scores_data, x = ~year) %>%
+    add_trace(y = ~imdb_moy, name = "Note IMDb", type = "scatter", mode = "lines+markers",
+              line = list(color = "#f1c40f"), marker = list(size = 4, color = "#f1c40f")) %>%
+    add_trace(y = ~meta_moy, name = "Metascore (/10)", type = "scatter", mode = "lines+markers",
+              line = list(color = "#3498db"), marker = list(size = 4, color = "#3498db")) %>%
+    style_plotly_axes(is_dark, x_title = "Année", y_title = "Score moyen") %>%
+    layout(legend = list(orientation = "h", y = -0.2))
+}
