@@ -1,6 +1,5 @@
 function(input, output, session) {
-  
-  # --- 1. DATASETS REACTIFS ---
+  # Datasets
   filtered_dataset <- reactive({
     req(input$year_range, input$imdb_range)
     df_filt <- raw_data[year >= input$year_range[1] & year <= input$year_range[2]]
@@ -24,7 +23,6 @@ function(input, output, session) {
     return(df_filt)
   })
   
-  # NOUVEAU : Fournit les données brutes des pays pour le graphique 100% empilé
   filtered_countries_dataset <- reactive({
     if(nrow(countries_dt) == 0) return(NULL)
     df_filt <- countries_dt[year >= input$year_range[1] & year <= input$year_range[2]]
@@ -34,7 +32,7 @@ function(input, output, session) {
     return(df_filt)
   })
   
-  # --- 2. VALUE BOXES ---
+  # Boites à infos
   output$box_total_val <- renderText({ nrow(filtered_dataset()) })
   output$box_percent_val <- renderText({
     df <- filtered_dataset()
@@ -47,7 +45,7 @@ function(input, output, session) {
     round(mean(df$rating_val, na.rm = TRUE), 2)
   })
   
-  # --- 3. GRAPHIQUES ---
+  # Graphiques
   output$hist_plot <- renderPlotly({
     df <- filtered_dataset()
     if(nrow(df) == 0) return(NULL)
@@ -81,7 +79,7 @@ function(input, output, session) {
     build_country_bar_plot(df_filt, identical(input$dark_mode_toggle, "dark"))
   }) |> bindCache(input$year_range, input$imdb_range, input$dark_mode_toggle)
   
-  # --- 4. OUTILS & ACTIONS ---
+  # Outils
   search_debounced <- reactive({ input$search_query }) |> debounce(500)
   
   observeEvent(search_debounced(), {

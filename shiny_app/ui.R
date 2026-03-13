@@ -6,6 +6,7 @@ library(bsicons)
 library(thematic)
 library(shinyWidgets)
 
+# thematic shiny est supposé appliquer le theme aux graphiques. Pas convaincu
 thematic_shiny(font = "auto")
 
 my_theme <- bs_theme(
@@ -15,6 +16,7 @@ my_theme <- bs_theme(
   base_font = font_google("Inter")
 )
 
+# ui principale
 ui <- page_navbar(
   title = "Explorateur Bechdel",
   theme = my_theme,
