@@ -1,7 +1,7 @@
 ---
 title: "Analyse de la représentation féminine au cinéma"
 subtitle: "Étude basée sur le test de Bechdel-Wallace et optimisation d'une application analytique"
-author: "Rapport de Projet"
+author: "Colin GEINDRE, Nicolas FERREIRA & Abderrahmane MAMOUN"
 date: "`r Sys.Date()`"
 output: 
   pdf_document:
