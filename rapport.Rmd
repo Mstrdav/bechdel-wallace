@@ -80,6 +80,12 @@ L'installation des dépendances se fait avec le fichier `install_dependencies.R`
 
 Lancez l'application avec `shiny::runApp('shiny_app')` dans le dossier général, ou juste `shiny::runApp()` dans le dossier shiny_app.
 
+### En ligne
+
+L'application est disponible en ligne à cette adresse :
+
+<https://nicferr29.shinyapps.io/shiny_app/>
+
 # Méthodologie et Ingénierie des Données
 
 ## Origine et Collecte des Données
