@@ -8,7 +8,7 @@ import pandas as pd
 import tqdm
 
 # pour trouver le dernier film ajouté, on cherche dans notre dataset
-df = pd.read_csv('data/raw/movies.csv')
+df = pd.read_csv('data/raw/movies.csv') # attention chemin relatif, voir ou on lance le script
 last_added_movie_date = df['date'].max()
 last_added_movie = df[df['date'] == last_added_movie_date]
 print(f"Dernier film ajouté : {last_added_movie[["title", "year", "date"]]}")

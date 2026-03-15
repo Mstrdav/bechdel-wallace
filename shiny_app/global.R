@@ -8,9 +8,9 @@ library(arrow)
 library(cachem) 
 
 # 1. Chargement des données Parquet
-raw_data <- setDT(read_parquet("../data/processed/movies_clean.parquet"))
-genres_dt <- if (file.exists("../data/processed/genres.parquet")) setDT(read_parquet("../data/processed/genres.parquet")) else data.table()
-countries_dt <- if (file.exists("../data/processed/countries.parquet")) setDT(read_parquet("../data/processed/countries.parquet")) else data.table()
+raw_data <- setDT(read_parquet("data/processed/movies_clean.parquet"))
+genres_dt <- if (file.exists("data/processed/genres.parquet")) setDT(read_parquet("data/processed/genres.parquet")) else data.table()
+countries_dt <- if (file.exists("data/processed/countries.parquet")) setDT(read_parquet("data/processed/countries.parquet")) else data.table()
 
 # 2. Indexation pour performance data.table
 setkey(raw_data, year, decade, rating_val)

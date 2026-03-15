@@ -39,9 +39,9 @@ bechdel_colors <- c("3" = "#2ecc71", "2" = "#f1c40f", "1" = "#e67e22", "0" = "#e
 
 # Chargement des données pré-traitées
 # Assurez-vous que le fichier Rmd est à la racine du projet ou ajustez les chemins
-path_movies <- "data/processed/movies_clean.parquet"
-path_genres <- "data/processed/genres.parquet"
-path_countries <- "data/processed/countries.parquet"
+path_movies <- "shiny_app/data/processed/movies_clean.parquet"
+path_genres <- "shiny_app/data/processed/genres.parquet"
+path_countries <- "shiny_app/data/processed/countries.parquet"
 
 # Simulation de données si les fichiers ne sont pas trouvés lors du tricotage 
 # (Utile pour que le document compile même si les chemins diffèrent légèrement)
@@ -67,6 +67,18 @@ Le test de Bechdel-Wallace est un indicateur visant à évaluer la représentati
 Malgré sa simplicité apparente, une proportion significative de la production cinématographique mondiale échoue à ce test.
 
 L'objectif de ce projet est double : - Premièrement, analyser statistiquement ces échecs en croisant les scores Bechdel avec des données annexes (budget, genre, pays de production, notes du public). - Deuxièmement, concevoir et optimiser une application interactive (R Shiny) capable de traiter et visualiser ces données massives avec des temps de réponse quasi-instantanés.
+
+## Instructions
+
+Dans le dossier `src`, vous trouverez tous nos scripts de scraping, de préparation et de nettoyage des données. Attention, ces scripts utilisent des chemins de fichiers relatifs, qui dépendront d'où vous les lancez. Ne les éxécutez que si vous êtes sur de vous.
+
+### Dépendances
+
+L'installation des dépendances se fait avec le fichier `install_dependencies.R`. Celui-ci est séparé de shiny_app car [shinyapps.io](https://shinyapps.io) utilise une détection automatique des librairies utilisées.
+
+### Exécution
+
+Lancez l'application avec `shiny::runApp('shiny_app')` dans le dossier général, ou juste `shiny::runApp()` dans le dossier shiny_app.
 
 # Méthodologie et Ingénierie des Données
 
